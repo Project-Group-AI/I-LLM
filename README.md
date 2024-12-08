@@ -11,7 +11,7 @@ Pass the initial question, along with relevant documents, to an LLM to generate 
 
 ## Difference between the RAG and HyDE method
 The main difference is that RAG directly compares the question with the documents while HyDE generates a hypothetical answer and compares it to these documents. the hypothetical answer allows us to obtain search more efficiently and with greater context.
-for example with RAG, when in the document there was "One of the famous grand masters is Garry Kasparov.", the RAG method does not understand that this document is related to chess, while with HyDE this time we understand that this document is related to failures thanks to the hypothetical response generated before.
+for example with RAG, when in the document there was "One of the famous grand masters is Garry Kasparov.", the RAG method does not understand that this document is related to chess, while with HyDE this time we understand that this document is related to chess with to the hypothetical response generated before.
 
 ### Result
 ![CleanShot 2024-12-08 at 20 06 05@2x](https://github.com/user-attachments/assets/bb12fa11-0dd2-4f97-96ba-6d7d741b4d50)
