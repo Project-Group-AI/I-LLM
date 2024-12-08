@@ -1,6 +1,13 @@
 # Example-HyDE
 
 ## Functioning
+- Generate a hypothetical answer:
+Use an LLM (like Mistral 7B) to produce a hypothetical answer based on the user's question.
+- Embedding and research:
+Encode this hypothetical answer (instead of the original question).
+Search the knowledge base for relevant documents by comparing embeddings.
+- Generate final answer:
+Pass the initial question, along with relevant documents, to an LLM to generate a contextual answer.
 
 ## Difference between the RAG and HyDE method
 
