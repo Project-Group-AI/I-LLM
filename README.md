@@ -1,5 +1,7 @@
 # Example-HyDE
 
+## Functioning
+
 ## Difference between the RAG and HyDE method
 
 ### Result
