@@ -1,5 +1,7 @@
 # Example-HyDE
 
+## Difference between the RAG and HyDE method
+
 ### Result
 ![CleanShot 2024-12-08 at 20 06 05@2x](https://github.com/user-attachments/assets/bb12fa11-0dd2-4f97-96ba-6d7d741b4d50)
 ![CleanShot 2024-12-08 at 20 06 17@2x](https://github.com/user-attachments/assets/9656aacd-02ed-4b43-b287-11e65ecb4889)
