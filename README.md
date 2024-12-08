@@ -9,4 +9,4 @@ But if i provided false information inside doc, the answer will not use these do
 ![CleanShot 2024-12-08 at 20 08 02@2x](https://github.com/user-attachments/assets/80521a86-157c-4767-8007-c6ba72688d85)
 
 ### Explanation
-the hypothetical response generated to be compared with the documents had to output the name of "Garry Kasparov", so if I put his name in a document without citing the failures the HyDE method will understand that this document is relevant but if I replace "Garry Kasparov" by "Romain Dujardin" so this time no link is made between the hypothetical response and this document and therefore it is not used
+the hypothetical response generated to be compared with the documents had to output the name of "Garry Kasparov", so if I put his name in a document without citing the chess the HyDE method will understand that this document is relevant but if I replace "Garry Kasparov" by "Romain Dujardin" so this time no link is made between the hypothetical response and this document and therefore it is not used
