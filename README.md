@@ -10,6 +10,7 @@ Search the knowledge base for relevant documents by comparing embeddings.
 Pass the initial question, along with relevant documents, to an LLM to generate a contextual answer.
 
 ## Difference between the RAG and HyDE method
+The main difference is that RAG directly compares the question with the documents while HyDE generates a hypothetical answer and compares it to these documents. the hypothetical answer allows us to obtain search more efficiently and with greater context.
 
 ### Result
 ![CleanShot 2024-12-08 at 20 06 05@2x](https://github.com/user-attachments/assets/bb12fa11-0dd2-4f97-96ba-6d7d741b4d50)
