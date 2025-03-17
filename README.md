@@ -4,6 +4,9 @@
 - Extraction automatique des critères à partir de la requete
 ![CleanShot 2025-03-17 at 18 30 25@2x](https://github.com/user-attachments/assets/feb80c92-77ed-4021-ac5d-87319fc3fd21)
 
+- j'élargie le champs des possibilitées pour la détection dans la requete 
+![CleanShot 2025-03-17 at 18 34 05@2x](https://github.com/user-attachments/assets/bcdfa206-0901-498e-90dc-793ec3c643b4)
+
 
 ## Difference between the RAG and HyDE method
 
