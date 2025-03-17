@@ -8,7 +8,10 @@
 ![CleanShot 2025-03-17 at 18 34 05@2x](https://github.com/user-attachments/assets/bcdfa206-0901-498e-90dc-793ec3c643b4)
 
 - Je crée un document hypothétique en me basant sur les colonnes du dataset, donc par exemple je sais que une personne en mobilité réduite aura besoin d'une entrée pmr + un cheminement extérieur plein pied + un stationnement pmr. ainsi je crée des critères pour chaque cas.
-- ![CleanShot 2025-03-17 at 18 35 52@2x](https://github.com/user-attachments/assets/5f36f511-8fb4-4f58-8d9b-e1943af2822c)
+![CleanShot 2025-03-17 at 18 35 52@2x](https://github.com/user-attachments/assets/5f36f511-8fb4-4f58-8d9b-e1943af2822c)
+
+- Ensuite je viens donc basé sur mes critères regarder ceux qui correspond dans mon dataset, le fait d'établir avant ces critères de filtrer la recherche et de ne pas chercher à chaque fois dans tout le dataset
+![CleanShot 2025-03-17 at 18 41 29@2x](https://github.com/user-attachments/assets/a21c0c25-f3e1-4ffb-8eb0-cc3a918c8f6a)
 
 
 
