@@ -337,7 +337,7 @@ class ChatbotInclusifGemini:
 # Exemple d'utilisation
 if __name__ == "__main__":
     dataset_path = "/Users/romain/Desktop/HyDE/acceslibre-with-web-url.csv"
-    api_key = "AIzaSyDbziFf_7_kDv0uFnv4hvIUrITCr1QIZzo"  # Remplacez par votre clé API
+    api_key = ""  # Remplacez par votre clé API
     
     chatbot = ChatbotInclusifGemini(dataset_path, api_key)
     
