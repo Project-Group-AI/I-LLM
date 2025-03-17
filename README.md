@@ -5,7 +5,6 @@
 
 
 
-## Difference between the RAG and HyDE method
 
 
 ### Result
