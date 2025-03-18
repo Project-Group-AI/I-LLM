@@ -1,5 +1,8 @@
 # Example-HyDE
 
+## Lien
+[https://example-hyde.streamlit.app/](https://example-hyde.streamlit.app/?embed_options=dark_theme)
+
 ## Fonctionnement
 - Chargement du dataset
 - Fonction pour détecter la pertinance de la question
