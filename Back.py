@@ -266,31 +266,31 @@ class ChatbotInclusifGemini:
             if key not in ['activite', 'commune'] and key in filtered_df.columns:
                 filtered_df = filtered_df[filtered_df[key] == value]
         
-        # Si aucun résultat avec tous les critères, on essaie une recherche plus souple
-        if len(filtered_df) == 0 and has_activite_filter and has_commune_filter:
-            print("Aucun résultat exact trouvé, essai d'une recherche plus souple...")
+        # # Si aucun résultat avec tous les critères, on essaie une recherche plus souple
+        # if len(filtered_df) == 0 and has_activite_filter and has_commune_filter:
+        #     print("Aucun résultat exact trouvé, essai d'une recherche plus souple...")
             
-            # On essaie d'abord avec juste l'activité et la commune
-            filtered_df = self.df.copy()
+        #     # On essaie d'abord avec juste l'activité et la commune
+        #     filtered_df = self.df.copy()
             
-            if has_activite_filter:
-                activite_value = criteria['activite']
-                filtered_df = filtered_df[filtered_df['activite'].str.lower().str.contains(activite_value.lower(), na=False)]
+        #     if has_activite_filter:
+        #         activite_value = criteria['activite']
+        #         filtered_df = filtered_df[filtered_df['activite'].str.lower().str.contains(activite_value.lower(), na=False)]
             
-            if has_commune_filter and len(filtered_df) > 0:
-                commune_value = criteria['commune']
-                filtered_df = filtered_df[filtered_df['commune'].str.lower().str.contains(commune_value.lower(), na=False)]
+        #     if has_commune_filter and len(filtered_df) > 0:
+        #         commune_value = criteria['commune']
+        #         filtered_df = filtered_df[filtered_df['commune'].str.lower().str.contains(commune_value.lower(), na=False)]
         
-        # Si toujours aucun résultat, on essaie avec une recherche encore plus large
-        if len(filtered_df) == 0 and has_commune_filter:
-            print("Toujours aucun résultat, essai avec seulement la commune...")
-            filtered_df = self.df.copy()
-            commune_value = criteria['commune']
-            filtered_df = filtered_df[filtered_df['commune'].str.lower().str.contains(commune_value.lower(), na=False)]
+        # # Si toujours aucun résultat, on essaie avec une recherche encore plus large
+        # if len(filtered_df) == 0 and has_commune_filter:
+        #     print("Toujours aucun résultat, essai avec seulement la commune...")
+        #     filtered_df = self.df.copy()
+        #     commune_value = criteria['commune']
+        #     filtered_df = filtered_df[filtered_df['commune'].str.lower().str.contains(commune_value.lower(), na=False)]
             
-            # On limite alors à quelques résultats aléatoires
-            if len(filtered_df) > top_n:
-                filtered_df = filtered_df.sample(top_n)
+        #     # On limite alors à quelques résultats aléatoires
+        #     if len(filtered_df) > top_n:
+        #         filtered_df = filtered_df.sample(top_n)
         
         # Limitation du nombre de résultats
         if len(filtered_df) > top_n:
@@ -399,7 +399,8 @@ class ChatbotInclusifGemini:
             2. Présentez brièvement chaque établissement en mentionnant:
                - Son nom
                - Son adresse
-               - Ses caractéristiques d'accessibilité
+               - Ses caractéristiques d'accessibilité en rapport avec la demande
+               - Les caractéristiques d'accessibilité supplémentaires si disponibles
                - Les informations de contact si disponibles
             3. Mettez en avant les aspects d'accessibilité qui correspondent spécifiquement à la demande de l'utilisateur
             4. Si les établissements ont des caractéristiques communes, regroupez-les pour éviter la répétition
