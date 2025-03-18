@@ -11,13 +11,10 @@
 - Recherche Question :
   - Création d'un document hypothétique via le LLM en sa basant sur les colonnes du dataset
   - Extraction des informations du document (ville, activité, handicap)
-  - Recherche dans le dataset ces critères et ressort dans un premier dans uniquement les informations qui correspondent à tt les critères sinon refait une recherche dans le dataset avec +-1 critère
+  - Recherche dans le dataset ces critères et ressort dans un premier temps dans uniquement les informations qui correspondent à tt les critères sinon refait une recherche dans le dataset avec +-1 critère
   - Envoie les données qui sont extraites du dataset au LLM qui lui reformule proprement et naturellement
   - Et affiche le résultat
 - Hors context : Renvoie une phrase prédéfini qui demande de poser une question en rapport avec notre context
-
-
-
 
 ### Result
 **Recherche question**
