@@ -20,5 +20,14 @@
 
 
 ### Result
+**Recherche question**
+![CleanShot 2025-03-18 at 08 53 52@2x](https://github.com/user-attachments/assets/fa6b6a2b-a201-460e-a102-9dec9c05b3b6)
+
+**Global question**
+![CleanShot 2025-03-18 at 08 54 28@2x](https://github.com/user-attachments/assets/f4969e15-344c-464d-a7a0-ff76f0b7bdbc)
+
+**Hors context**
+![CleanShot 2025-03-18 at 08 53 01@2x](https://github.com/user-attachments/assets/cf67b6a9-5c74-4942-a017-76874b874060)
+
 
 ### Explanation
