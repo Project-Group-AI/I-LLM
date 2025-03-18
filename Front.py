@@ -58,7 +58,12 @@ def main():
         # Bouton pour appliquer les paramètres
         if st.button("Appliquer les paramètres"):
             st.success("Paramètres appliqués avec succès!")
-            st.experimental_rerun()
+            # On met à jour une variable d'état plutôt que de redémarrer l'app
+            st.session_state.api_key = api_key
+            st.session_state.dataset_path = dataset_path
+            # Redirection conditionnelle ou gestion de l'état
+            st.experimental_rerun()  # Cela peut être potentiellement supprimé si cela devient redondant.
+
     
     # Sidebar pour l'historique des conversations
     with st.sidebar:
