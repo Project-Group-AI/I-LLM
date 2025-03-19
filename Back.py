@@ -7,22 +7,24 @@ import os
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import json
+import requests
+from urllib.parse import quote
 
 class ChatbotInclusifGemini:
-    def __init__(self, dataset_path, api_key):
+    def __init__(self, api_base_url, gemini_api_key):
         """
-        Initialise le chatbot inclusif avec le dataset des établissements publics
+        Initialise le chatbot inclusif avec l'API des établissements publics
         et l'API Gemini 2.0 Flash.
         
         Args:
-            dataset_path (str): Chemin vers le fichier CSV du dataset
-            api_key (str): Clé API pour Gemini
+            api_base_url (str): URL de base de l'API
+            gemini_api_key (str): Clé API pour Gemini
         """
-        self.dataset_path = dataset_path
+        self.api_base_url = api_base_url
         self.model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
         
         # Configuration de Gemini
-        genai.configure(api_key=api_key)
+        genai.configure(api_key=gemini_api_key)
         
         # Modèle Gemini pour la génération de documents hypothétiques
         generation_config = {
@@ -74,25 +76,45 @@ class ChatbotInclusifGemini:
             safety_settings=safety_settings
         )
         
-        # Chargement des données
-        self.load_data()
+        # Vérification de l'API
+        self.check_api_connection()
         
         # Initialisation de la base de connaissances sur le handicap
         self.initialize_knowledge_base()
         
-    def load_data(self):
+    def check_api_connection(self):
         """
-        Charge le dataset et prépare les données
+        Vérifie la connexion à l'API et récupère des informations sur la structure des données
         """
-        print("Chargement du dataset...")
-        self.df = pd.read_csv(self.dataset_path, low_memory=False)
-        
-        # Conversion des colonnes booléennes
-        bool_columns = [col for col in self.df.columns if any(x in col for x in ['presence', 'pmr', 'stable', 'plain_pied', 'adaptes'])]
-        for col in bool_columns:
-            self.df[col] = self.df[col].astype(str).str.lower().map({'true': True, 'false': False, 'nan': np.nan, 'none': np.nan})
-        
-        print(f"Dataset chargé avec succès. {len(self.df)} établissements disponibles.")
+
+        try:
+            # URL de l'API (assure-toi que self.api_base_url est bien défini)
+            api_url = f"{self.api_base_url}?page=1&page_size=1"  # Ajout de params pour limiter la charge
+
+            # Requête avec timeout pour éviter de bloquer l'exécution
+            response = requests.get(api_url, timeout=10)
+            response.raise_for_status()  # Lève une erreur si le statut HTTP est mauvais (ex: 404, 500)
+
+            # Vérification du format JSON
+            try:
+                data = response.json()
+            except requests.exceptions.JSONDecodeError:
+                raise ValueError("La réponse de l'API n'est pas un JSON valide.")
+
+            # Vérification que la réponse contient bien des données
+            if "data" in data and isinstance(data["data"], list) and len(data["data"]) > 0:
+                print("✅ Connexion à l'API réussie.")
+                print(f"🔹 Structure des données : {list(data['data'][0].keys())}")
+            else:
+                print("⚠️ Connexion réussie, mais aucune donnée trouvée.")
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Erreur de connexion à l'API : {e}")
+            raise
+        except Exception as e:
+            print(f"❌ Une erreur inattendue s'est produite : {e}")
+            raise
+
     
     def initialize_knowledge_base(self):
         """
@@ -185,7 +207,7 @@ class ChatbotInclusifGemini:
         
         Crée un document hypothétique au format JSON avec uniquement les champs suivants si pertinents:
         - commune: le nom de la ville ou commune
-        - activite: le type d'établissement (restaurant, musée, etc.)
+        - activite: le type d'établissement (restaurant, musée, etc.), si rien n'est mentionné, laisser un espace uniquement pour ce champ
         - entree_pmr: true si l'accessibilité PMR est mentionnée
         - stationnement_pmr: true si le stationnement PMR est mentionné
         - stationnement_presence: true si le stationnement est mentionné
@@ -233,7 +255,7 @@ class ChatbotInclusifGemini:
         
     def search_establishments(self, criteria, top_n=5):
         """
-        Recherche les établissements correspondant aux critères extraits.
+        Recherche les établissements correspondant aux critères extraits via l'API.
         
         Args:
             criteria (dict): Critères de recherche
@@ -242,61 +264,50 @@ class ChatbotInclusifGemini:
         Returns:
             list: Liste des établissements correspondants
         """
-        # Filtre initial
-        filtered_df = self.df.copy()
+        # Construire l'URL de requête à l'API
+        query_params = []
         
-        # Traitement spécial pour le type d'établissement (activité)
-        has_activite_filter = False
-        if 'activite' in criteria:
-            has_activite_filter = True
-            activite_value = criteria['activite']
-            # Recherche insensible à la casse pour l'activité
-            filtered_df = filtered_df[filtered_df['activite'].str.lower().str.contains(activite_value.lower(), na=False)]
-            
-        # Traitement spécial pour la commune
-        has_commune_filter = False
+        # Paramètres spéciaux pour commune et activité (recherche exacte)
         if 'commune' in criteria:
-            has_commune_filter = True
-            commune_value = criteria['commune']
-            # Recherche insensible à la casse pour la commune
-            filtered_df = filtered_df[filtered_df['commune'].str.lower().str.contains(commune_value.lower(), na=False)]
+            query_params.append(f"commune__exact={quote(criteria['commune'])}")
         
-        # Autres filtres
-        for key, value in criteria.items():
-            if key not in ['activite', 'commune'] and key in filtered_df.columns:
-                filtered_df = filtered_df[filtered_df[key] == value]
+        if 'activite' in criteria:
+            query_params.append(f"activite__contains={quote(criteria['activite'])}")
         
-        # # Si aucun résultat avec tous les critères, on essaie une recherche plus souple
-        # if len(filtered_df) == 0 and has_activite_filter and has_commune_filter:
-        #     print("Aucun résultat exact trouvé, essai d'une recherche plus souple...")
-            
-        #     # On essaie d'abord avec juste l'activité et la commune
-        #     filtered_df = self.df.copy()
-            
-        #     if has_activite_filter:
-        #         activite_value = criteria['activite']
-        #         filtered_df = filtered_df[filtered_df['activite'].str.lower().str.contains(activite_value.lower(), na=False)]
-            
-        #     if has_commune_filter and len(filtered_df) > 0:
-        #         commune_value = criteria['commune']
-        #         filtered_df = filtered_df[filtered_df['commune'].str.lower().str.contains(commune_value.lower(), na=False)]
+        # Autres filtres d'accessibilité (correspondance exacte pour les booléens)
+        boolean_fields = [
+            'entree_pmr', 'stationnement_pmr', 'stationnement_presence', 
+            'sanitaires_presence', 'sanitaires_adaptes', 
+            'accueil_equipements_malentendants_presence', 'accueil_audiodescription_presence',
+            'cheminement_ext_bande_guidage', 'cheminement_ext_plain_pied',
+            'transport_station_presence'
+        ]
         
-        # # Si toujours aucun résultat, on essaie avec une recherche encore plus large
-        # if len(filtered_df) == 0 and has_commune_filter:
-        #     print("Toujours aucun résultat, essai avec seulement la commune...")
-        #     filtered_df = self.df.copy()
-        #     commune_value = criteria['commune']
-        #     filtered_df = filtered_df[filtered_df['commune'].str.lower().str.contains(commune_value.lower(), na=False)]
-            
-        #     # On limite alors à quelques résultats aléatoires
-        #     if len(filtered_df) > top_n:
-        #         filtered_df = filtered_df.sample(top_n)
+        for field in boolean_fields:
+            if field in criteria and criteria[field] is True:
+                query_params.append(f"{field}__exact=true")
         
-        # Limitation du nombre de résultats
-        if len(filtered_df) > top_n:
-            filtered_df = filtered_df.head(top_n)
+        # Limite du nombre de résultats
+        query_params.append(f"page_size={top_n}")
+        
+        # Construction de l'URL complète
+        api_url = f"{self.api_base_url}?{'&'.join(query_params)}"
+        print(f"URL de recherche API: {api_url}")
+        
+        try:
+            # Requête à l'API
+            response = requests.get(api_url)
+            response.raise_for_status()
             
-        return filtered_df.to_dict('records')
+            # Conversion des résultats
+            establishments = response.json()
+            print(f"Nombre d'établissements trouvés: {len(establishments)}")
+            
+            return establishments
+            
+        except Exception as e:
+            print(f"Erreur lors de la recherche via l'API: {e}")
+            return []
     
     def generate_natural_response(self, establishments, query, criteria):
         """
@@ -306,7 +317,7 @@ class ChatbotInclusifGemini:
             establishments (list): Liste des établissements trouvés
             query (str): La requête originale de l'utilisateur
             criteria (dict): Les critères extraits de la requête
-            
+                
         Returns:
             str: Réponse naturelle générée
         """
@@ -331,57 +342,64 @@ class ChatbotInclusifGemini:
             Écrivez votre réponse comme si vous vous adressiez directement à l'utilisateur, sans introduction ni conclusion artificielle.
             """
         else:
+            # Vérifie que seuls les établissements dans 'data' sont traités
+            if isinstance(establishments, dict) and 'data' in establishments:
+                establishments = establishments['data']
+            
             # Préparation des données des établissements pour le prompt
             establishments_data = []
             for i, estab in enumerate(establishments, 1):
-                estab_info = {
-                    "nom": estab.get('name', 'Établissement sans nom'),
-                    "activite": estab.get('activite', 'Non spécifié'),
-                }
-                
-                # Adresse
-                address_parts = []
-                if estab.get('numero'):
-                    address_parts.append(str(estab['numero']))
-                if estab.get('voie'):
-                    address_parts.append(estab['voie'])
-                if estab.get('commune'):
-                    address_parts.append(estab['commune'])
-                if estab.get('postal_code'):
-                    address_parts.append(str(estab['postal_code']))
+                if isinstance(estab, dict):  # Vérification si 'estab' est bien un dictionnaire
+                    estab_info = {
+                        "nom": estab.get('name', 'Établissement sans nom'),
+                        "activite": estab.get('activite', 'Non spécifié'),
+                    }
                     
-                estab_info["adresse"] = ' '.join(str(part) for part in address_parts if part)
-                
-                # Accessibilité
-                access_features = []
-                if estab.get('entree_pmr') == True:
-                    access_features.append("Entrée accessible PMR")
-                if estab.get('stationnement_pmr') == True:
-                    access_features.append("Stationnement PMR")
-                if estab.get('sanitaires_adaptes') == True:
-                    access_features.append("Sanitaires adaptés")
-                if estab.get('accueil_equipements_malentendants_presence') == True:
-                    access_features.append("Équipements pour malentendants")
-                if estab.get('accueil_audiodescription_presence') == True:
-                    access_features.append("Audiodescription disponible")
+                    # Adresse
+                    address_parts = []
+                    if estab.get('numero'):
+                        address_parts.append(str(estab['numero']))
+                    if estab.get('voie'):
+                        address_parts.append(estab['voie'])
+                    if estab.get('commune'):
+                        address_parts.append(estab['commune'])
+                    if estab.get('code_postal'):  # Notez le changement possible par rapport au CSV
+                        address_parts.append(str(estab['code_postal']))
+                        
+                    estab_info["adresse"] = ' '.join(str(part) for part in address_parts if part)
                     
-                estab_info["accessibilite"] = access_features
-                
-                # Contact
-                contact_info = {}
-                if estab.get('contact_url'):
-                    contact_info["contact"] = estab['contact_url']
-                if estab.get('site_internet'):
-                    contact_info["site_web"] = estab['site_internet']
-                if estab.get('web_url'):
-                    contact_info["page_web"] = estab['web_url']
-                if estab.get('latitude') and estab.get('longitude'):
-                    contact_info["coordonnees_gps"] = f"{estab['latitude']}, {estab['longitude']}"
+                    # Accessibilité
+                    access_features = []
+                    if estab.get('entree_pmr') == True:
+                        access_features.append("Entrée accessible PMR")
+                    if estab.get('stationnement_pmr') == True:
+                        access_features.append("Stationnement PMR")
+                    if estab.get('sanitaires_adaptes') == True:
+                        access_features.append("Sanitaires adaptés")
+                    if estab.get('accueil_equipements_malentendants_presence') == True:
+                        access_features.append("Équipements pour malentendants")
+                    if estab.get('accueil_audiodescription_presence') == True:
+                        access_features.append("Audiodescription disponible")
+                        
+                    estab_info["accessibilite"] = access_features
                     
-                estab_info["contact"] = contact_info
-                
-                establishments_data.append(estab_info)
-                
+                    # Contact
+                    contact_info = {}
+                    if estab.get('contact_url'):
+                        contact_info["contact"] = estab['contact_url']
+                    if estab.get('site_internet'):
+                        contact_info["site_web"] = estab['site_internet']
+                    if estab.get('web_url'):
+                        contact_info["page_web"] = estab['web_url']
+                    if estab.get('latitude') and estab.get('longitude'):
+                        contact_info["coordonnees_gps"] = f"{estab['latitude']}, {estab['longitude']}"
+                        
+                    estab_info["contact"] = contact_info
+                    
+                    establishments_data.append(estab_info)
+                else:
+                    print(f"Élément non attendu: {estab}")  # Message de débogage pour voir l'élément incorrect
+                    
             # Prompt pour Gemini
             prompt = f"""
             Tu es un assistant spécialisé dans la recherche d'établissements publics accessibles en France.
@@ -397,11 +415,11 @@ class ChatbotInclusifGemini:
             Générez une réponse naturelle, conversationnelle et en français qui:
             1. Commence par confirmer que vous avez trouvé des établissements correspondant à la demande
             2. Présentez brièvement chaque établissement en mentionnant:
-               - Son nom
-               - Son adresse
-               - Ses caractéristiques d'accessibilité en rapport avec la demande
-               - Les caractéristiques d'accessibilité supplémentaires si disponibles
-               - Les informations de contact si disponibles
+            - Son nom
+            - Son adresse
+            - Ses caractéristiques d'accessibilité en rapport avec la demande
+            - Les caractéristiques d'accessibilité supplémentaires si disponibles
+            - Les informations de contact si disponibles
             3. Mettez en avant les aspects d'accessibilité qui correspondent spécifiquement à la demande de l'utilisateur
             4. Si les établissements ont des caractéristiques communes, regroupez-les pour éviter la répétition
             
@@ -421,8 +439,12 @@ class ChatbotInclusifGemini:
             return response.text
         except Exception as e:
             print(f"Erreur lors de la génération de la réponse naturelle: {e}")
-            # En cas d'erreur, on revient à la méthode de formatage classique
-            return self.format_result(establishments)
+            if establishments:
+                return f"J'ai trouvé {len(establishments)} établissements correspondant à votre recherche, mais je n'ai pas pu générer une réponse détaillée. Veuillez réessayer ou reformuler votre demande."
+            else:
+                return "Je n'ai pas trouvé d'établissements correspondant à vos critères. Essayez peut-être d'élargir votre recherche ou de reformuler votre demande."
+
+
 
     def generate_knowledge_response(self, query):
         """
@@ -504,74 +526,6 @@ class ChatbotInclusifGemini:
             print(f"Erreur lors de la génération de la réponse sur les connaissances: {e}")
             return "Je suis désolé, mais je ne peux pas répondre à cette question pour le moment. Veuillez contacter directement la MDPH de votre département pour obtenir des informations précises sur les aides et services disponibles."
     
-    def format_result(self, establishments):
-        """
-        Méthode de secours pour formater les résultats si la génération naturelle échoue.
-        
-        Args:
-            establishments (list): Liste des établissements trouvés
-            
-        Returns:
-            str: Réponse formatée
-        """
-        if not establishments:
-            return "Je n'ai pas trouvé d'établissement correspondant à votre demande."
-            
-        response = f"J'ai trouvé {len(establishments)} établissement(s) correspondant à votre demande :\n\n"
-        
-        for i, estab in enumerate(establishments, 1):
-            response += f"{i}. {estab.get('name', 'Établissement sans nom')}\n"
-            
-            # Type d'activité
-            if estab.get('activite'):
-                response += f"   Activité: {estab['activite']}\n"
-            
-            # Adresse
-            address_parts = []
-            if estab.get('numero'):
-                address_parts.append(str(estab['numero']))
-            if estab.get('voie'):
-                address_parts.append(estab['voie'])
-            if estab.get('commune'):
-                address_parts.append(estab['commune'])
-            if estab.get('postal_code'):
-                address_parts.append(str(estab['postal_code']))
-                
-            if address_parts:
-                response += f"   Adresse: {' '.join(str(part) for part in address_parts if part)}\n"
-            
-            # Accessibilité
-            accessibility = []
-            if estab.get('entree_pmr') == True:
-                accessibility.append("Entrée accessible PMR")
-            if estab.get('stationnement_pmr') == True:
-                accessibility.append("Stationnement PMR")
-            if estab.get('sanitaires_adaptes') == True:
-                accessibility.append("Sanitaires adaptés")
-            if estab.get('accueil_equipements_malentendants_presence') == True:
-                accessibility.append("Équipements pour malentendants")
-            if estab.get('accueil_audiodescription_presence') == True:
-                accessibility.append("Audiodescription disponible")
-                
-            if accessibility:
-                response += f"   Accessibilité: {', '.join(accessibility)}\n"
-            
-            # Coordonnées et sites web
-            if estab.get('contact_url'):
-                response += f"   Contact: {estab['contact_url']}\n"
-            if estab.get('site_internet'):
-                response += f"   Site web: {estab['site_internet']}\n"
-            if estab.get('web_url'):
-                response += f"   Page web: {estab['web_url']}\n"
-                
-            # Coordonnées géographiques
-            if estab.get('latitude') and estab.get('longitude'):
-                response += f"   Coordonnées GPS: {estab['latitude']}, {estab['longitude']}\n"
-                
-            response += "\n"
-            
-        return response
-    
     def process_query(self, query):
         """
         Traite la requête de l'utilisateur et renvoie une réponse.
@@ -611,7 +565,7 @@ class ChatbotInclusifGemini:
             if 'commune' not in criteria:
                 return "Pourriez-vous préciser dans quelle commune ou ville vous souhaitez effectuer votre recherche ?"
             
-            # Recherche des établissements
+            # Recherche des établissements via l'API
             establishments = self.search_establishments(criteria)
             
             # Générer une réponse naturelle avec le LLM
@@ -621,13 +575,13 @@ class ChatbotInclusifGemini:
 
 # Exemple d'utilisation
 if __name__ == "__main__":
-    dataset_path = "/Users/romain/Desktop/HyDE/acceslibre-with-web-url.csv"
-    api_key = ""  # Remplacez par votre clé API
+    api_base_url = "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/"
+    gemini_api_key = ""  # Remplacez par votre clé API
     
-    chatbot = ChatbotInclusifGemini(dataset_path, api_key)
+    chatbot = ChatbotInclusifGemini(api_base_url, gemini_api_key)
     
     
-    print("Chatbot Inclusif avec Gemini initialisé. Posez votre question (ou tapez 'quit' pour quitter):")
+    print("Chatbot Inclusif avec Gemini et API initialisé. Posez votre question (ou tapez 'quit' pour quitter):")
     
     while True:
         user_query = input("\nVotre question: ")
