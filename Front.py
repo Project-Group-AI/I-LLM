@@ -24,13 +24,13 @@ st.set_page_config(
 
 # Fonction pour initialiser le chatbot
 @st.cache_resource
-def initialize_chatbot(dataset_path, api_key):
+def initialize_chatbot(api_base_url,  gemini_api_key):
     with st.spinner("Initialisation du chatbot en cours..."):
-        return ChatbotInclusifGemini(dataset_path, api_key)
+        return ChatbotInclusifGemini(api_base_url,  gemini_api_key)
 
 # Fonction pour afficher l'en-tête de l'application
 def display_header():
-    st.title("🌈 Chatbot Inclusif pour l'Accessibilité")
+    st.title("I-LLM")
     st.markdown("""
     ### Trouvez des établissements publics accessibles et obtenez des informations sur le handicap
     Ce chatbot vous aide à trouver des établissements adaptés à vos besoins d'accessibilité et répond à vos questions sur le handicap.
@@ -46,21 +46,21 @@ def main():
         
         with col1:
             # Champ pour la clé API (masqué)
-            api_key = st.text_input("Clé API Gemini", type="password", 
+             gemini_api_key = st.text_input("Clé API Gemini", type="password", 
                                   help="Entrez votre clé API Gemini pour activer le chatbot")
         
         with col2:
             # Sélection du fichier de données
-            dataset_path = st.text_input("Chemin vers le fichier CSV des établissements", 
-                                       value="acceslibre-with-web-url.csv",
-                                       help="Chemin vers le fichier CSV du dataset d'établissements")
+            api_base_url = st.text_input("Lien de l'API pour le dataset", 
+                                       value="https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/",
+                                       help="Lien de l'API pour le dataset des établissements accessibles")
         
         # Bouton pour appliquer les paramètres
         if st.button("Appliquer les paramètres"):
             st.success("Paramètres appliqués avec succès!")
             # On met à jour une variable d'état plutôt que de redémarrer l'app
-            st.session_state.api_key = api_key
-            st.session_state.dataset_path = dataset_path
+            st.session_state. gemini_api_key =  gemini_api_key
+            st.session_state.api_base_url = api_base_url
             # Redirection conditionnelle ou gestion de l'état
             st.experimental_rerun()  # Cela peut être potentiellement supprimé si cela devient redondant.
 
@@ -118,9 +118,9 @@ def main():
         """)
     
     # Initialisation du chatbot si les paramètres sont fournis
-    if api_key and dataset_path:
+    if  gemini_api_key and api_base_url:
         try:
-            chatbot = initialize_chatbot(dataset_path, api_key)
+            chatbot = initialize_chatbot(api_base_url,  gemini_api_key)
             st.success("✅ Chatbot initialisé avec succès!")
             
             # Initialisation de l'historique de conversation s'il n'existe pas déjà
@@ -210,9 +210,9 @@ def main():
                     
         except Exception as e:
             st.error(f"Erreur lors de l'initialisation du chatbot: {str(e)}")
-            st.info("Vérifiez que le chemin du fichier CSV est correct et que votre clé API est valide.")
+            st.info("Vérifiez que l'URL de l'API est correct et que votre clé API est valide.")
     else:
-        st.warning("⚠️ Veuillez entrer votre clé API Gemini et le chemin vers le fichier CSV pour initialiser le chatbot.")
+        st.warning("⚠️ Veuillez entrer votre clé API Gemini et l'URL de l'API pour initialiser le chatbot.")
         
         # Affichage d'une démo visuelle en attendant
         st.image("https://via.placeholder.com/800x400?text=Chatbot+Inclusif+Demo", caption="Aperçu du chatbot")

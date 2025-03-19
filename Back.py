@@ -207,7 +207,7 @@ class ChatbotInclusifGemini:
         
         Crée un document hypothétique au format JSON avec uniquement les champs suivants si pertinents:
         - commune: le nom de la ville ou commune
-        - activite: le type d'établissement (restaurant, musée, etc.), si rien n'est mentionné, laisser un espace uniquement pour ce champ
+        - activite: le type d'établissement (restaurant, musée, etc.), si rien n'est mentionné, laisser un espace uniquement pour ce champ. De plus s'il s'ajout d'un type d'établissement en rapport avec le fait de manger comme pizzeria ou fast-food, le type d'établissement doit être restaurant.
         - entree_pmr: true si l'accessibilité PMR est mentionnée
         - stationnement_pmr: true si le stationnement PMR est mentionné
         - stationnement_presence: true si le stationnement est mentionné
@@ -576,7 +576,7 @@ class ChatbotInclusifGemini:
 # Exemple d'utilisation
 if __name__ == "__main__":
     api_base_url = "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/"
-    gemini_api_key = ""  # Remplacez par votre clé API
+    gemini_api_key = "AIzaSyDbziFf_7_kDv0uFnv4hvIUrITCr1QIZzo"  # Remplacez par votre clé API
     
     chatbot = ChatbotInclusifGemini(api_base_url, gemini_api_key)
     
