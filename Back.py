@@ -391,9 +391,14 @@ class ChatbotInclusifGemini:
                         contact_info["site_web"] = estab['site_internet']
                     if estab.get('web_url'):
                         contact_info["page_web"] = estab['web_url']
+                    
+                    # Ajout des coordonnées GPS
                     if estab.get('latitude') and estab.get('longitude'):
                         contact_info["coordonnees_gps"] = f"{estab['latitude']}, {estab['longitude']}"
                         
+                        # Générer le lien Google Maps sous forme de texte cliquable
+                        google_maps_link = f"https://www.google.com/maps/search/?api=1&query={estab['latitude']},{estab['longitude']}"
+                        contact_info["google_maps_link"] = f'<a href="{google_maps_link}" target="_blank">lien Google Maps</a>'
                     estab_info["contact"] = contact_info
                     
                     establishments_data.append(estab_info)
@@ -412,7 +417,7 @@ class ChatbotInclusifGemini:
             Voici les informations sur ces établissements:
             {json.dumps(establishments_data, ensure_ascii=False, indent=2)}
             
-            Générez une réponse naturelle, conversationnelle et en français qui:
+            Génère une réponse naturelle, conversationnelle et en français qui:
             1. Commence par confirmer que vous avez trouvé des établissements correspondant à la demande
             2. Présentez brièvement chaque établissement en mentionnant:
             - Son nom
@@ -420,6 +425,7 @@ class ChatbotInclusifGemini:
             - Ses caractéristiques d'accessibilité en rapport avec la demande
             - Les caractéristiques d'accessibilité supplémentaires si disponibles
             - Les informations de contact si disponibles
+            - Le lien Google Maps si disponible
             3. Mettez en avant les aspects d'accessibilité qui correspondent spécifiquement à la demande de l'utilisateur
             4. Si les établissements ont des caractéristiques communes, regroupez-les pour éviter la répétition
             
@@ -576,7 +582,7 @@ class ChatbotInclusifGemini:
 # Exemple d'utilisation
 if __name__ == "__main__":
     api_base_url = "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/"
-    gemini_api_key = "AIzaSyDbziFf_7_kDv0uFnv4hvIUrITCr1QIZzo"  # Remplacez par votre clé API
+    gemini_api_key = ""  # Remplacez par votre clé API
     
     chatbot = ChatbotInclusifGemini(api_base_url, gemini_api_key)
     
