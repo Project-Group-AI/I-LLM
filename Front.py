@@ -39,15 +39,20 @@ def display_header():
 # Fonction pour gérer le changement de thème
 def change_theme():
     previous_theme = st.session_state.themes["current_theme"]
-    tdict = st.session_state.themes["light"] if previous_theme == "light" else st.session_state.themes["dark"]
+    new_theme = "dark" if previous_theme == "light" else "light"
+    st.session_state.themes["current_theme"] = new_theme  # Mise à jour de l'état
+    tdict = st.session_state.themes[new_theme]  # Récupérer le dictionnaire du nouveau thème
     
     for vkey, vval in tdict.items(): 
         if vkey.startswith("theme"): 
             st._config.set_option(vkey, vval)
-    
-    st.session_state.themes["current_theme"] = "light" if previous_theme == "dark" else "dark"
+
+    # Preserve the current font selection
+    st.session_state["selected_font"] = st.session_state.get("selected_font", "police de base")
+
     # Ensure font selection is preserved
     st.session_state.themes["refreshed"] = True
+    st.session_state.run_rerun = True  # Définir un flag pour le rerun
 
 def apply_font_size():
     # Fonction séparée pour appliquer la taille de police
@@ -55,6 +60,12 @@ def apply_font_size():
 
 # Fonction principale
 def main():
+    if st.session_state.get("run_rerun", False):
+        st.session_state.run_rerun = False  # Réinitialiser le flag
+        st.rerun()
+
+    if "selected_font" not in st.session_state:
+        st.session_state["selected_font"] = "police de base"
 
     # Initialisation du thème si nécessaire
     ms = st.session_state
@@ -68,7 +79,7 @@ def main():
                 "theme.primaryColor": "#3B82F6",  # Soft blue for primary elements in light mode
                 "theme.secondaryBackgroundColor": "#f0f2f6",  # Light gray for secondary background
                 "theme.textColor": "#1F2937",  # Dark charcoal for text in light mode
-                "button_face": "🌞"
+                "button_face": "🌜"
             },
             "dark": {
                 "theme.base": "dark",
@@ -76,7 +87,7 @@ def main():
                 "theme.primaryColor": "#6366F1",  # Indigo for primary elements in dark mode
                 "theme.secondaryBackgroundColor": "#1E1E1E",  # Dark gray for secondary background
                 "theme.textColor": "#E5E7EB",  # Light gray for text in dark mode
-                "button_face": "🌜"
+                "button_face": "🌞"
             }
         }
 
@@ -91,19 +102,14 @@ def main():
 
     display_header()
 
-
-    # Assurez-vous que la police et la taille de police sont initialisées
-    if "selected_font" not in st.session_state:
-        st.session_state["selected_font"] = "police de base"
-
     # Détermine la police à utiliser
     if st.session_state["selected_font"] == "Comic Sans MS":
         css_font = "'Comic Sans MS', cursive, sans-serif"
     else:
-        # Police de base : ici nous utilisons une police système par défaut qui s'adapte au thème
+        # Default system font that adapts to the theme
         css_font = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
-    # Injection du CSS pour appliquer la police et la taille sur tous les éléments
+    # Injection of CSS to apply font and size on all elements
     st.markdown(
         f"""
         <style>
@@ -111,7 +117,7 @@ def main():
             font-family: {css_font} !important;
             font-size: {st.session_state['font_size']}px !important;
         }}
-        /* Ajustements pour différents types d'éléments */
+        /* Adjustments for different element types */
         h1 {{ font-size: {st.session_state['font_size'] * 2}px !important; }}
         h2 {{ font-size: {st.session_state['font_size'] * 1.5}px !important; }}
         h3 {{ font-size: {st.session_state['font_size'] * 1.3}px !important; }}
@@ -120,17 +126,6 @@ def main():
         """,
         unsafe_allow_html=True
     )
-    
-    # Modification to preserve font selection
-    if "selected_font" not in st.session_state:
-        st.session_state["selected_font"] = "police de base"
-
-    # Détermine la police à utiliser
-    if st.session_state["selected_font"] == "Comic Sans MS":
-        css_font = "'Comic Sans MS', cursive, sans-serif"
-    else:
-        # Police de base : ici nous utilisons une police système par défaut qui s'adapte au thème
-        css_font = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
     # Injection du CSS pour appliquer la police sur tous les éléments
     # Moved this to ensure it's always applied, regardless of theme change
