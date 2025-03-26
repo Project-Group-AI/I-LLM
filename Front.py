@@ -294,6 +294,11 @@ def main():
             
             if prompt := st.chat_input("Posez votre question sur l'accessibilité ou recherchez un établissement..."):
                 process_question(prompt)
+
+            if "selected_question" in st.session_state:
+                question = st.session_state.selected_question
+                del st.session_state.selected_question
+                process_question(question)
             
             # Bouton pour sauvegarder la conversation actuelle
             if len(st.session_state.messages) > 1:  # S'il y a plus que le message initial
@@ -312,21 +317,23 @@ def main():
                 st.write("Cliquez sur une question pour la poser automatiquement:")
                 if st.button("Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"):
                     st.session_state.selected_question = "Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"
+                    st.rerun()
                 if st.button("Y a-t-il un musée avec audiodescription à Lyon ?"):
                     st.session_state.selected_question = "Y a-t-il un musée avec audiodescription à Lyon ?"
+                    st.rerun()
                 if st.button("Je cherche une piscine avec stationnement PMR à Bordeaux"):
                     st.session_state.selected_question = "Je cherche une piscine avec stationnement PMR à Bordeaux"
+                    st.rerun()
                 if st.button("Quelles sont les aides financières pour les personnes handicapées ?"):
                     st.session_state.selected_question = "Quelles sont les aides financières pour les personnes handicapées ?"
+                    st.rerun()
                 if st.button("Comment fonctionne la MDPH ?"):
                     st.session_state.selected_question = "Comment fonctionne la MDPH ?"
+                    st.rerun()
                 if st.button("Quels sont mes droits en tant que personne malvoyante ?"):
                     st.session_state.selected_question = "Quels sont mes droits en tant que personne malvoyante ?"
+                    st.rerun()
 
-            if "selected_question" in st.session_state:
-                question = st.session_state.selected_question
-                del st.session_state.selected_question
-                process_question(question)
                     
         except Exception as e:
             st.error(f"Erreur lors de l'initialisation du chatbot: {str(e)}")
