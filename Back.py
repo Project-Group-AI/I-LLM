@@ -218,6 +218,7 @@ class ChatbotInclusifGemini:
         - cheminement_ext_bande_guidage: true si des bandes de guidage sont mentionnées
         - cheminement_ext_plain_pied: true si l'accessibilité de plain-pied est mentionnée
         - transport_station_presence: true si la proximité des transports est mentionnée
+        - google_maps_link_needed: true si tu juges nécessaire de fournir un lien Google Maps pour cet établissement
         
         Retourne uniquement le JSON, sans aucun autre texte.
         Si la requête ne concerne pas la recherche d'un établissement public, retourne un JSON vide {{}}.
@@ -392,13 +393,15 @@ class ChatbotInclusifGemini:
                     if estab.get('web_url'):
                         contact_info["page_web"] = estab['web_url']
                     
-                    # Ajout des coordonnées GPS
-                    if estab.get('latitude') and estab.get('longitude'):
+                    # Ajout des coordonnées GPS seulement si un lien Google Maps est nécessaire
+                    if (estab.get('latitude') and estab.get('longitude') and 
+                        criteria.get('google_maps_link_needed') == True):
                         contact_info["coordonnees_gps"] = f"{estab['latitude']}, {estab['longitude']}"
                         
-                        # Générer le lien Google Maps sous forme de texte cliquable
+                        # Générer le lien Google Maps sous forme de texte cliquable compatible avec Streamlit
                         google_maps_link = f"https://www.google.com/maps/search/?api=1&query={estab['latitude']},{estab['longitude']}"
-                        contact_info["google_maps_link"] = f'<a href="{google_maps_link}" target="_blank">lien Google Maps</a>'
+                        contact_info["google_maps_link"] = f"[Lien Google Maps]({google_maps_link})"
+                    
                     estab_info["contact"] = contact_info
                     
                     establishments_data.append(estab_info)
