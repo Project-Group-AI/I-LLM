@@ -272,41 +272,28 @@ def main():
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
-            
-            # Zone de saisie pour la question de l'utilisateur
-            if prompt := st.chat_input("Posez votre question sur l'accessibilité ou recherchez un établissement..."):
-                # Ajout du message de l'utilisateur à l'historique
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                
-                # Affichage du message de l'utilisateur
+
+            def process_question(question):
+                st.session_state.messages.append({"role": "user", "content": question})
                 with st.chat_message("user"):
-                    st.markdown(prompt)
-                
-                # Affichage du message de l'assistant avec animation de chargement
+                    st.markdown(question)
                 with st.chat_message("assistant"):
                     message_placeholder = st.empty()
                     message_placeholder.markdown("🔍 Recherche en cours...")
-                    
-                    # Obtention de la réponse du chatbot
                     try:
-                        response = chatbot.process_query(prompt)
-                        
-                        # Animation de chargement (optionnel)
+                        response = chatbot.process_query(question)
                         with st.spinner("Génération de la réponse..."):
-                            # Création d'une animation de saisie
                             for i in range(len(response) // 10):
                                 partial_response = response[:i*10]
                                 message_placeholder.markdown(f"{partial_response}▌")
                                 time.sleep(0.01)
-                            
-                            # Affichage de la réponse complète
                             message_placeholder.markdown(response)
-                            
-                        # Ajout de la réponse à l'historique
                         st.session_state.messages.append({"role": "assistant", "content": response})
-                        
                     except Exception as e:
                         message_placeholder.markdown(f"⚠️ Désolé, une erreur s'est produite : {str(e)}")
+            
+            if prompt := st.chat_input("Posez votre question sur l'accessibilité ou recherchez un établissement..."):
+                process_question(prompt)
             
             # Bouton pour sauvegarder la conversation actuelle
             if len(st.session_state.messages) > 1:  # S'il y a plus que le message initial
@@ -321,31 +308,25 @@ def main():
                     
                     st.success("Conversation sauvegardée!")
             
-            # Section d'exemples de questions
             with st.expander("📝 Exemples de questions"):
-                st.markdown("""
-                Voici quelques exemples de questions que vous pouvez poser:
-                
-                **Recherche d'établissements:**
-                - "Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"
-                - "Y a-t-il un musée avec audiodescription à Lyon ?"
-                - "Je cherche une piscine avec stationnement PMR à Bordeaux"
-                
-                **Questions générales:**
-                - "Quelles sont les aides financières pour les personnes handicapées ?"
-                - "Comment fonctionne la MDPH ?"
-                - "Quels sont mes droits en tant que personne malvoyante ?"
-                """)
-                
-                # Boutons pour poser directement les questions d'exemple
-                col1, col2 = st.columns(2)
-                if col1.button("Restaurants accessibles à Paris"):
-                    st.session_state.messages.append({"role": "user", "content": "Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"})
-                    st.rerun()
-                
-                if col2.button("Aides financières"):
-                    st.session_state.messages.append({"role": "user", "content": "Quelles sont les aides financières pour les personnes handicapées ?"})
-                    st.rerun()
+                st.write("Cliquez sur une question pour la poser automatiquement:")
+                if st.button("Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"):
+                    st.session_state.selected_question = "Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"
+                if st.button("Y a-t-il un musée avec audiodescription à Lyon ?"):
+                    st.session_state.selected_question = "Y a-t-il un musée avec audiodescription à Lyon ?"
+                if st.button("Je cherche une piscine avec stationnement PMR à Bordeaux"):
+                    st.session_state.selected_question = "Je cherche une piscine avec stationnement PMR à Bordeaux"
+                if st.button("Quelles sont les aides financières pour les personnes handicapées ?"):
+                    st.session_state.selected_question = "Quelles sont les aides financières pour les personnes handicapées ?"
+                if st.button("Comment fonctionne la MDPH ?"):
+                    st.session_state.selected_question = "Comment fonctionne la MDPH ?"
+                if st.button("Quels sont mes droits en tant que personne malvoyante ?"):
+                    st.session_state.selected_question = "Quels sont mes droits en tant que personne malvoyante ?"
+
+            if "selected_question" in st.session_state:
+                question = st.session_state.selected_question
+                del st.session_state.selected_question
+                process_question(question)
                     
         except Exception as e:
             st.error(f"Erreur lors de l'initialisation du chatbot: {str(e)}")
