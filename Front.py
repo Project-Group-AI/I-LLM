@@ -315,6 +315,7 @@ def main():
             
             with st.expander("📝 Exemples de questions"):
                 st.write("Cliquez sur une question pour la poser automatiquement:")
+                st.markdown("""**Recherche d'établissements:**""")
                 if st.button("Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"):
                     st.session_state.selected_question = "Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"
                     st.rerun()
@@ -324,6 +325,7 @@ def main():
                 if st.button("Je cherche une piscine avec stationnement PMR à Bordeaux"):
                     st.session_state.selected_question = "Je cherche une piscine avec stationnement PMR à Bordeaux"
                     st.rerun()
+                st.markdown("""**Questions générales:**""")
                 if st.button("Quelles sont les aides financières pour les personnes handicapées ?"):
                     st.session_state.selected_question = "Quelles sont les aides financières pour les personnes handicapées ?"
                     st.rerun()
