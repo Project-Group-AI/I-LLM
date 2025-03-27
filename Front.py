@@ -199,13 +199,13 @@ def main():
         
         with col1:
             # Champ pour la clé API (masqué)
-             gemini_api_key = st.text_input("Clé API Gemini", type="password", 
+             gemini_api_key = st.text_input("Clé API Gemini", type="password", value=st.session_state.get("gemini_api_key", ""), 
                                   help="Entrez votre clé API Gemini pour activer le chatbot")
         
         with col2:
             # Sélection du fichier de données
             api_base_url = st.text_input("Lien de l'API pour le dataset", 
-                                       value="https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/",
+                                       value=st.session_state.get("api_base_url", "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/"),
                                        help="Lien de l'API pour le dataset des établissements accessibles")
         
         # Bouton pour appliquer les paramètres
@@ -308,9 +308,9 @@ def main():
         """)
 
     # Initialisation du chatbot si les paramètres sont fournis
-    if  gemini_api_key and api_base_url:
+    if st.session_state.get("gemini_api_key") and st.session_state.get("api_base_url"):
         try:
-            chatbot = initialize_chatbot(api_base_url,  gemini_api_key)
+            chatbot = initialize_chatbot(st.session_state["api_base_url"], st.session_state["gemini_api_key"])
             st.success("✅ Chatbot initialisé avec succès!")
             
             # Initialisation de l'historique de conversation s'il n'existe pas déjà
