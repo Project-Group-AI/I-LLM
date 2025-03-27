@@ -22,6 +22,22 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+CONVERSATIONS_FILE = "conversations.json"
+
+def load_conversations():
+    if os.path.exists(CONVERSATIONS_FILE):
+        with open(CONVERSATIONS_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return []
+    else:
+        return []
+
+def save_conversations(conversations):
+    with open(CONVERSATIONS_FILE, "w", encoding="utf-8") as f:
+        json.dump(conversations, f, ensure_ascii=False, indent=4)
+
 # Fonction pour initialiser le chatbot
 @st.cache_resource
 def initialize_chatbot(api_base_url,  gemini_api_key):
@@ -140,23 +156,19 @@ def main():
         unsafe_allow_html=True
     )
 
-    # Paramètres en haut dans un header
-    try:
-        gemini_api_key = st.secrets["gemini_api_key"]
-        api_base_url = st.secrets["api_base_url"]
-    except KeyError:
-        # Fallback to manual input if secrets are not found
-        with st.expander("⚙️ Paramètres de configuration", expanded=True):
-            col1, col2 = st.columns(2)
+
+
+    with st.expander("⚙️ Paramètres de configuration", expanded=True):
+        col1, col2 = st.columns(2)
             
-            with col1:
-                gemini_api_key = st.text_input("Clé API Gemini", type="password", 
+        with col1:
+            gemini_api_key = st.text_input("Clé API Gemini", type="password", 
                                       help="Entrez votre clé API Gemini pour activer le chatbot")
             
-            with col2:
-                api_base_url = st.text_input("Lien de l'API pour le dataset", 
-                                           value="https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/",
-                                           help="Lien de l'API pour le dataset des établissements accessibles")
+        with col2:
+            api_base_url = st.text_input("Lien de l'API pour le dataset", 
+                                        value="https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/",
+                                        help="Lien de l'API pour le dataset des établissements accessibles")
         
         # Check if manual inputs are provided
         if not (gemini_api_key and api_base_url):
@@ -172,6 +184,11 @@ def main():
             # Redirection conditionnelle ou gestion de l'état
             st.rerun()  # Cela peut être potentiellement supprimé si cela devient redondant.
 
+    # ------------------------------
+    # Chargement de l'historique depuis le fichier
+    # ------------------------------
+    if "conversation_history" not in st.session_state:
+        st.session_state.conversation_history = load_conversations()
     
     # Sidebar pour l'historique des conversations
     with st.sidebar:
@@ -228,6 +245,7 @@ def main():
                     # Option pour supprimer cette conversation
                     if st.button(f"Supprimer", key=f"delete_{i}"):
                         st.session_state.conversation_history.pop(i)
+                        save_conversations(st.session_state.conversation_history)
                         st.rerun()
         
         # Bouton pour créer une nouvelle conversation
@@ -238,6 +256,7 @@ def main():
                     "date": time.strftime("%d/%m/%Y %H:%M"),
                     "messages": st.session_state.messages.copy()
                 })
+                save_conversations(st.session_state.conversation_history)
             
             # Réinitialisation des messages
             st.session_state.messages = [
@@ -301,16 +320,13 @@ def main():
                 process_question(question)
             
             # Bouton pour sauvegarder la conversation actuelle
-            if len(st.session_state.messages) > 1:  # S'il y a plus que le message initial
+            if len(st.session_state.messages) > 1:
                 if st.button("💾 Sauvegarder cette conversation"):
-                    if "conversation_history" not in st.session_state:
-                        st.session_state.conversation_history = []
-                    
                     st.session_state.conversation_history.append({
                         "date": time.strftime("%d/%m/%Y %H:%M"),
                         "messages": st.session_state.messages.copy()
                     })
-                    
+                    save_conversations(st.session_state.conversation_history)
                     st.success("Conversation sauvegardée!")
             
             with st.expander("📝 Exemples de questions"):
@@ -334,6 +350,11 @@ def main():
                     st.rerun()
                 if st.button("Quels sont mes droits en tant que personne malvoyante ?"):
                     st.session_state.selected_question = "Quels sont mes droits en tant que personne malvoyante ?"
+                    st.rerun()
+                st.markdown("""**Outils disponibles:**""")
+                st.markdown("""Recherche google maps:""")
+                if st.button("Je cherche un restaurant accessible PMR à Lille, donne moi le liens google maps pour savoir ou il se situe."):
+                    st.session_state.selected_question = "Je cherche un restaurant accessible PMR à Lille, génére moi une carte maps pour savoir ou il se situe."
                     st.rerun()
 
                     
