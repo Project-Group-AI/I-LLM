@@ -328,6 +328,7 @@ def main():
                     })
                     save_conversations(st.session_state.conversation_history)
                     st.success("Conversation sauvegardée!")
+                    st.rerun()
             
             with st.expander("📝 Exemples de questions"):
                 st.write("Cliquez sur une question pour la poser automatiquement:")
