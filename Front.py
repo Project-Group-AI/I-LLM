@@ -194,23 +194,19 @@ def main():
     )
 
 
-
-    with st.expander("⚙️ Paramètres de configuration", expanded=True):
+    with st.expander("⚙️ Paramètres de configuration", expanded=False):
         col1, col2 = st.columns(2)
-            
-        with col1:
-            gemini_api_key = st.text_input("Clé API Gemini", type="password", 
-                                      help="Entrez votre clé API Gemini pour activer le chatbot")
-            
-        with col2:
-            api_base_url = st.text_input("Lien de l'API pour le dataset", 
-                                        value="https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/",
-                                        help="Lien de l'API pour le dataset des établissements accessibles")
         
-        # Check if manual inputs are provided
-        if not (gemini_api_key and api_base_url):
-            st.warning("⚠️ Veuillez entrer votre clé API Gemini et l'URL de l'API pour initialiser le chatbot.")
-            return
+        with col1:
+            # Champ pour la clé API (masqué)
+             gemini_api_key = st.text_input("Clé API Gemini", type="password", 
+                                  help="Entrez votre clé API Gemini pour activer le chatbot")
+        
+        with col2:
+            # Sélection du fichier de données
+            api_base_url = st.text_input("Lien de l'API pour le dataset", 
+                                       value="https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/",
+                                       help="Lien de l'API pour le dataset des établissements accessibles")
         
         # Bouton pour appliquer les paramètres
         if st.button("Appliquer les paramètres"):
