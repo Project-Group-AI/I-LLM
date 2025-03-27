@@ -74,6 +74,43 @@ def apply_font_size():
     # Fonction séparée pour appliquer la taille de police
     st.session_state["font_size"] = st.session_state["font_size_draft"]
 
+def generate_title(messages):
+    """Génère un titre court résumant la demande générale de l'utilisateur en préservant la casse originale."""
+    import re
+    for m in messages:
+        if m.get("role") == "user" and m.get("content"):
+            text = m.get("content").strip()
+            # Supprimer la ponctuation en conservant la casse originale
+            text_no_punct = re.sub(r'[^\w\sÀ-ÿ]', '', text)
+            original_words = text_no_punct.split()
+            # Liste de stopwords en minuscules, incluant "y" et "atil" pour gérer "Y a-t-il"
+            stopwords = {
+                "quels", "quelles", "sont", "mes", "en", "tant", "que", "les", "des",
+                "de", "le", "la", "et", "pour", "a", "un", "une", "ces", "ce", "est",
+                "où", "puisje", "trouver", "je", "cherche", "chercher", "personne", "dont", "au", "aux",
+                "y", "atil"
+            }
+            # Conserver la casse originale pour les mots non filtrés
+            keywords = [word for word in original_words if word.lower() not in stopwords]
+            
+            # Extraction d'une localisation dans le texte original (exemple : "à Paris")
+            loc_match = re.search(r' à ([\wÀ-ÿ]+)', text, re.IGNORECASE)
+            location = loc_match.group(1).strip() if loc_match else ""
+            # Retirer la localisation des mots clés si elle y figure
+            keywords = [word for word in keywords if word.lower() != location.lower()]
+            
+            # Utiliser jusqu'à 3 mots clés pour le résumé
+            summary_keywords = keywords[:3]
+            title = " ".join(summary_keywords)
+            if location:
+                title += " à " + location
+            # S'assurer que le titre débute par une majuscule sans modifier le reste
+            if title:
+                title = title[0].upper() + title[1:]
+            return title
+    import time
+    return time.strftime("%d/%m/%Y %H:%M")
+
 # Fonction principale
 def main():
     if st.session_state.get("run_rerun", False):
@@ -233,7 +270,7 @@ def main():
             st.info("Aucune conversation enregistrée.")
         else:
             for i, conversation in enumerate(st.session_state.conversation_history):
-                with st.expander(f"Conversation {i+1} - {conversation['date']}"):
+                with st.expander(f"{conversation.get('title', f'Conversation {i+1}')} - {conversation['date']}"):
                     for message in conversation["messages"]:
                         st.markdown(f"**{message['role'].capitalize()}**: {message['content'][:50]}...")
                     
@@ -250,18 +287,17 @@ def main():
         
         # Bouton pour créer une nouvelle conversation
         if st.button("➕ Nouvelle conversation"):
-            if "messages" in st.session_state and len(st.session_state.messages) > 1:
-                # Sauvegarde de la conversation actuelle si elle existe
-                st.session_state.conversation_history.append({
-                    "date": time.strftime("%d/%m/%Y %H:%M"),
-                    "messages": st.session_state.messages.copy()
-                })
-                save_conversations(st.session_state.conversation_history)
-            
             # Réinitialisation des messages
             st.session_state.messages = [
                 {"role": "assistant", "content": "Bonjour ! Je suis votre assistant virtuel pour l'accessibilité. Comment puis-je vous aider aujourd'hui ?"}
             ]
+            if "saved_conversation" in st.session_state:
+                del st.session_state.saved_conversation
+            st.rerun()
+
+        if st.button("Supprimer toutes les conversations"):
+            st.session_state.conversation_history = []
+            save_conversations(st.session_state.conversation_history)
             st.rerun()
         
         st.divider()
@@ -320,13 +356,15 @@ def main():
                 process_question(question)
             
             # Bouton pour sauvegarder la conversation actuelle
-            if len(st.session_state.messages) > 1:
+            if len(st.session_state.messages) > 1 and "saved_conversation" not in st.session_state:
                 if st.button("💾 Sauvegarder cette conversation"):
                     st.session_state.conversation_history.append({
                         "date": time.strftime("%d/%m/%Y %H:%M"),
+                        "title": generate_title(st.session_state.messages),
                         "messages": st.session_state.messages.copy()
                     })
                     save_conversations(st.session_state.conversation_history)
+                    st.session_state.saved_conversation = True
                     st.success("Conversation sauvegardée!")
                     st.rerun()
             
