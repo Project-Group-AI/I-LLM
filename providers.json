@@ -1,0 +1,12 @@
+{
+    "Gemini 2.0 Flash": {
+        "key_label": "Clé API Gemini",
+        "help_text": "Entrez votre clé API Gemini pour activer le chatbot",
+        "model_name": "gemini-2.0-flash"
+    },
+    "Mistral Large": {
+        "key_label": "Clé API Mistral",
+        "help_text": "Entrez votre clé API Mistral",
+        "model_name": "mistral-large-latest"
+    }
+}

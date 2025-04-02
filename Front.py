@@ -22,8 +22,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Fichiers de stockage
 CONVERSATIONS_FILE = "conversations.json"
+DATASETS_FILE = "datasets.json"       # Fichier de stockage des datasets
+PROVIDERS_FILE = "providers.json"     # Fichier de stockage des providers
 
+# --- Gestion des conversations ---
 def load_conversations():
     if os.path.exists(CONVERSATIONS_FILE):
         with open(CONVERSATIONS_FILE, "r", encoding="utf-8") as f:
@@ -38,13 +42,56 @@ def save_conversations(conversations):
     with open(CONVERSATIONS_FILE, "w", encoding="utf-8") as f:
         json.dump(conversations, f, ensure_ascii=False, indent=4)
 
-# Fonction pour initialiser le chatbot
-@st.cache_resource
-def initialize_chatbot(api_base_url,  gemini_api_key):
-    with st.spinner("Initialisation du chatbot en cours..."):
-        return ChatbotInclusifGemini(api_base_url,  gemini_api_key)
+# --- Gestion des datasets ---
+def load_datasets():
+    if os.path.exists(DATASETS_FILE):
+        with open(DATASETS_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    else:
+        # Datasets par défaut
+        return {
+            "AccesLibre": {
+                "base_url": "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/",
+                "help_text": "Dataset officiel des établissements accessibles"
+            }
+        }
 
-# Fonction pour afficher l'en-tête de l'application
+def save_datasets(datasets):
+    with open(DATASETS_FILE, "w", encoding="utf-8") as f:
+        json.dump(datasets, f, ensure_ascii=False, indent=4)
+
+# --- Gestion des providers ---
+def load_providers():
+    if os.path.exists(PROVIDERS_FILE):
+        with open(PROVIDERS_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    else:
+        # Providers par défaut
+        return {
+            "Gemini 2.0 Flash": {
+                "key_label": "Clé API Gemini",
+                "help_text": "Entrez votre clé API Gemini pour activer le chatbot",
+                "model_name": "gemini-2.0-flash"
+            }
+        }
+
+def save_providers(providers):
+    with open(PROVIDERS_FILE, "w", encoding="utf-8") as f:
+        json.dump(providers, f, ensure_ascii=False, indent=4)
+
+# --- Initialisation du chatbot ---
+@st.cache_resource
+def initialize_chatbot(api_base_url, api_key):
+    with st.spinner("Initialisation du chatbot en cours..."):
+        return ChatbotInclusifGemini(api_base_url, api_key)
+
+# --- Affichage de l'en-tête ---
 def display_header():
     st.title("I-LLM")
     st.markdown("""
@@ -52,66 +99,52 @@ def display_header():
     Ce chatbot vous aide à trouver des établissements adaptés à vos besoins d'accessibilité et répond à vos questions sur le handicap.
     """)
 
-# Fonction pour gérer le changement de thème
+# --- Gestion du thème ---
 def change_theme():
     previous_theme = st.session_state.themes["current_theme"]
     new_theme = "dark" if previous_theme == "light" else "light"
     st.session_state.themes["current_theme"] = new_theme  # Mise à jour de l'état
     tdict = st.session_state.themes[new_theme]  # Récupérer le dictionnaire du nouveau thème
-    
-    for vkey, vval in tdict.items(): 
-        if vkey.startswith("theme"): 
+    for vkey, vval in tdict.items():
+        if vkey.startswith("theme"):
             st._config.set_option(vkey, vval)
-
-    # Preserve the current font selection
     st.session_state["selected_font"] = st.session_state.get("selected_font", "police de base")
-
-    # Ensure font selection is preserved
     st.session_state.themes["refreshed"] = True
-    st.session_state.run_rerun = True  # Définir un flag pour le rerun
+    st.session_state.run_rerun = True  # Flag pour forcer le rerun
 
 def apply_font_size():
-    # Fonction séparée pour appliquer la taille de police
     st.session_state["font_size"] = st.session_state["font_size_draft"]
 
+# --- Génération d'un titre pour la sauvegarde d'une conversation ---
 def generate_title(messages):
     """Génère un titre court résumant la demande générale de l'utilisateur en préservant la casse originale."""
     import re
     for m in messages:
         if m.get("role") == "user" and m.get("content"):
             text = m.get("content").strip()
-            # Supprimer la ponctuation en conservant la casse originale
             text_no_punct = re.sub(r'[^\w\sÀ-ÿ]', '', text)
             original_words = text_no_punct.split()
-            # Liste de stopwords en minuscules, incluant "y" et "atil" pour gérer "Y a-t-il"
             stopwords = {
                 "quels", "quelles", "sont", "mes", "en", "tant", "que", "les", "des",
                 "de", "le", "la", "et", "pour", "a", "un", "une", "ces", "ce", "est",
                 "où", "puisje", "trouver", "je", "cherche", "chercher", "personne", "dont", "au", "aux",
                 "y", "atil"
             }
-            # Conserver la casse originale pour les mots non filtrés
             keywords = [word for word in original_words if word.lower() not in stopwords]
-            
-            # Extraction d'une localisation dans le texte original (exemple : "à Paris")
             loc_match = re.search(r' à ([\wÀ-ÿ]+)', text, re.IGNORECASE)
             location = loc_match.group(1).strip() if loc_match else ""
-            # Retirer la localisation des mots clés si elle y figure
             keywords = [word for word in keywords if word.lower() != location.lower()]
-            
-            # Utiliser jusqu'à 3 mots clés pour le résumé
             summary_keywords = keywords[:3]
             title = " ".join(summary_keywords)
             if location:
                 title += " à " + location
-            # S'assurer que le titre débute par une majuscule sans modifier le reste
             if title:
                 title = title[0].upper() + title[1:]
             return title
     import time
     return time.strftime("%d/%m/%Y %H:%M")
 
-# Fonction principale
+# --- Fonction principale ---
 def main():
     if st.session_state.get("run_rerun", False):
         st.session_state.run_rerun = False  # Réinitialiser le flag
@@ -143,13 +176,8 @@ def main():
                 "button_face": "🌞"
             }
         }
-
-    
-    # Initialisation de la taille de police si nécessaire
     if "font_size" not in st.session_state:
         st.session_state["font_size"] = 16  # Taille de police par défaut
-    
-    # Initialisation du brouillon de taille de police
     if "font_size_draft" not in st.session_state:
         st.session_state["font_size_draft"] = st.session_state["font_size"]
 
@@ -159,10 +187,9 @@ def main():
     if st.session_state["selected_font"] == "Comic Sans MS":
         css_font = "'Comic Sans MS', cursive, sans-serif"
     else:
-        # Default system font that adapts to the theme
         css_font = "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
 
-    # Injection of CSS to apply font and size on all elements
+    # Injection du CSS pour appliquer la police et la taille sur tous les éléments
     st.markdown(
         f"""
         <style>
@@ -170,7 +197,6 @@ def main():
             font-family: {css_font} !important;
             font-size: {st.session_state['font_size']}px !important;
         }}
-        /* Adjustments for different element types */
         h1 {{ font-size: {st.session_state['font_size'] * 2}px !important; }}
         h2 {{ font-size: {st.session_state['font_size'] * 1.5}px !important; }}
         h3 {{ font-size: {st.session_state['font_size'] * 1.3}px !important; }}
@@ -179,9 +205,6 @@ def main():
         """,
         unsafe_allow_html=True
     )
-
-    # Injection du CSS pour appliquer la police sur tous les éléments
-    # Moved this to ensure it's always applied, regardless of theme change
     st.markdown(
         f"""
         <style>
@@ -193,51 +216,156 @@ def main():
         unsafe_allow_html=True
     )
 
+    # --- Chargement des datasets et providers depuis leurs fichiers JSON ---
+    datasets = load_datasets()
+    providers = load_providers()
 
+    # --- Expander pour la configuration des paramètres ---
     with st.expander("⚙️ Paramètres de configuration", expanded=False):
         col1, col2 = st.columns(2)
-        
-        with col1:
-            # Champ pour la clé API (masqué)
-             gemini_api_key = st.text_input("Clé API Gemini", type="password", value=st.session_state.get("gemini_api_key", ""), 
-                                  help="Entrez votre clé API Gemini pour activer le chatbot")
-        
-        with col2:
-            # Sélection du fichier de données
-            api_base_url = st.text_input("Lien de l'API pour le dataset", 
-                                       value=st.session_state.get("api_base_url", "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/"),
-                                       help="Lien de l'API pour le dataset des établissements accessibles")
-        
-        # Bouton pour appliquer les paramètres
-        if st.button("Appliquer les paramètres"):
-            st.success("Paramètres appliqués avec succès!")
-            # On met à jour une variable d'état plutôt que de redémarrer l'app
-            st.session_state. gemini_api_key =  gemini_api_key
-            st.session_state.api_base_url = api_base_url
-            # Redirection conditionnelle ou gestion de l'état
-            st.rerun()  # Cela peut être potentiellement supprimé si cela devient redondant.
 
-    # ------------------------------
-    # Chargement de l'historique depuis le fichier
-    # ------------------------------
+        with col1:
+            # Sélection du provider
+            selected_provider = st.selectbox(
+                "Fournisseur de modèle",
+                options=list(providers.keys()),
+                index=0,
+                key="provider_select",
+                help="Sélectionnez le fournisseur de modèle IA à utiliser"
+            )
+            provider_config = providers[selected_provider]
+            api_key = st.text_input(
+                provider_config["key_label"],
+                type="password",
+                value=st.session_state.get("api_key", ""),
+                help=provider_config["help_text"]
+            )
+
+        with col2:
+            # Sélection du dataset
+            selected_dataset = st.selectbox(
+                "Source de données",
+                options=list(datasets.keys()),
+                index=0,
+                key="dataset_select",
+                help="Sélectionnez la base de données à interroger"
+            )
+            dataset_config = datasets[selected_dataset]
+            api_base_url = st.text_input(
+                "URL de l'API",
+                value=st.session_state.get("api_base_url", dataset_config["base_url"]),
+                help=dataset_config["help_text"]
+            )
+
+        if st.button("Appliquer les paramètres"):
+            if api_key and api_base_url:
+                st.session_state.update({
+                    "api_key": api_key,
+                    "api_base_url": api_base_url,
+                    "selected_provider": selected_provider,
+                    "selected_dataset": selected_dataset,
+                    "provider_config": provider_config,
+                    "dataset_config": dataset_config
+                })
+                st.success("Paramètres appliqués avec succès!")
+                st.rerun()
+            else:
+                st.error("Veuillez remplir tous les champs obligatoires")
+    
+    # --- Expander pour ajouter un nouveau dataset ---
+    with st.expander("Ajouter un nouveau dataset"):
+        new_dataset_name = st.text_input("Nom du dataset", key="new_dataset_name")
+        new_dataset_url = st.text_input("URL du dataset", key="new_dataset_url")
+        new_dataset_help = st.text_input("Description du dataset", key="new_dataset_help")
+        
+        if st.button("Ajouter dataset"):
+            if new_dataset_name and new_dataset_url:
+                datasets[new_dataset_name] = {
+                    "base_url": new_dataset_url,
+                    "help_text": new_dataset_help
+                }
+                save_datasets(datasets)
+                st.success("Dataset ajouté et enregistré!")
+                st.rerun()
+            else:
+                st.error("Veuillez renseigner le nom et l'URL du dataset")
+    
+    # --- Expander pour gérer (modifier/supprimer) les datasets existants ---
+    with st.expander("Gérer les datasets"):
+        for ds_name in list(datasets.keys()):
+            st.markdown(f"#### {ds_name}")
+            new_url = st.text_input("URL du dataset", value=datasets[ds_name]["base_url"], key=f"url_{ds_name}")
+            new_help = st.text_input("Description du dataset", value=datasets[ds_name]["help_text"], key=f"help_{ds_name}")
+            col_mod, col_del = st.columns(2)
+            with col_mod:
+                if st.button("Modifier dataset", key=f"mod_{ds_name}"):
+                    datasets[ds_name]["base_url"] = new_url
+                    datasets[ds_name]["help_text"] = new_help
+                    save_datasets(datasets)
+                    st.success(f"Dataset {ds_name} modifié!")
+                    st.rerun()
+            with col_del:
+                if st.button("Supprimer dataset", key=f"del_{ds_name}"):
+                    del datasets[ds_name]
+                    save_datasets(datasets)
+                    st.success(f"Dataset {ds_name} supprimé!")
+                    st.rerun()
+    
+    # --- Expander pour ajouter un nouveau provider ---
+    with st.expander("Ajouter un nouveau provider"):
+        new_provider_name = st.text_input("Nom du provider", key="new_provider_name")
+        new_key_label = st.text_input("Label pour la clé API", key="new_key_label")
+        new_help_text = st.text_input("Description du provider", key="new_help_text")
+        new_model_name = st.text_input("Nom du modèle", key="new_model_name")
+        if st.button("Ajouter provider"):
+            if new_provider_name and new_key_label and new_model_name:
+                providers[new_provider_name] = {
+                    "key_label": new_key_label,
+                    "help_text": new_help_text,
+                    "model_name": new_model_name
+                }
+                save_providers(providers)
+                st.success("Provider ajouté et enregistré!")
+                st.rerun()
+            else:
+                st.error("Veuillez renseigner le nom du provider, le label et le nom du modèle")
+    
+    # --- Expander pour gérer (modifier/supprimer) les providers existants ---
+    with st.expander("Gérer les providers"):
+        for prov_name in list(providers.keys()):
+            st.markdown(f"#### {prov_name}")
+            new_label = st.text_input("Label pour la clé API", value=providers[prov_name]["key_label"], key=f"label_{prov_name}")
+            new_help = st.text_input("Description du provider", value=providers[prov_name]["help_text"], key=f"prov_help_{prov_name}")
+            new_model = st.text_input("Nom du modèle", value=providers[prov_name]["model_name"], key=f"model_{prov_name}")
+            col_mod, col_del = st.columns(2)
+            with col_mod:
+                if st.button("Modifier provider", key=f"mod_prov_{prov_name}"):
+                    providers[prov_name]["key_label"] = new_label
+                    providers[prov_name]["help_text"] = new_help
+                    providers[prov_name]["model_name"] = new_model
+                    save_providers(providers)
+                    st.success(f"Provider {prov_name} modifié!")
+                    st.rerun()
+            with col_del:
+                if st.button("Supprimer provider", key=f"del_prov_{prov_name}"):
+                    del providers[prov_name]
+                    save_providers(providers)
+                    st.success(f"Provider {prov_name} supprimé!")
+                    st.rerun()
+    
+    # --- Chargement de l'historique des conversations ---
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = load_conversations()
     
-    # Sidebar pour l'historique des conversations
+    # --- Sidebar : Historique des conversations et paramètres supplémentaires ---
     with st.sidebar:
-        # Bouton de thème dans la sidebar
         btn_face = (
             ms.themes["light"]["button_face"] 
             if ms.themes["current_theme"] == "light" 
             else ms.themes["dark"]["button_face"]
         )
         st.button(f"{btn_face} Changer de thème", on_click=change_theme)
-        
-        # --- Sélecteur de police ---
-        # Le selectbox est associé à la clé "selected_font" pour sauvegarder le choix dans session_state
         st.selectbox("Police du site", ["police de base", "Comic Sans MS"], key="selected_font")
-
-        # Slider pour la taille de police draft
         font_size_draft = st.slider(
             "Ajustez la taille de police", 
             min_value=12, 
@@ -246,22 +374,9 @@ def main():
             key="font_size_draft_slider"
         )
         st.session_state["font_size_draft"] = font_size_draft
-        
-        # Bouton Appliquer avec on_click
-        st.button(
-            "Appliquer la taille de police", 
-            on_click=apply_font_size,
-            key="apply_font_size_btn"
-        )
-        
+        st.button("Appliquer la taille de police", on_click=apply_font_size, key="apply_font_size_btn")
         st.divider()
-        
         st.header("📜 Historique des conversations")
-        
-        # Affichage de l'historique des conversations
-        if "conversation_history" not in st.session_state:
-            st.session_state.conversation_history = []
-        
         if not st.session_state.conversation_history:
             st.info("Aucune conversation enregistrée.")
         else:
@@ -269,57 +384,35 @@ def main():
                 with st.expander(f"{conversation.get('title', f'Conversation {i+1}')} - {conversation['date']}"):
                     for message in conversation["messages"]:
                         st.markdown(f"**{message['role'].capitalize()}**: {message['content'][:50]}...")
-                    
-                    # Option pour charger cette conversation
                     if st.button(f"Charger cette conversation", key=f"load_{i}"):
                         st.session_state.messages = conversation["messages"].copy()
                         st.rerun()
-                    
-                    # Option pour supprimer cette conversation
                     if st.button(f"Supprimer", key=f"delete_{i}"):
                         st.session_state.conversation_history.pop(i)
                         save_conversations(st.session_state.conversation_history)
                         st.rerun()
-        
-        # Bouton pour créer une nouvelle conversation
         if st.button("➕ Nouvelle conversation"):
-            # Réinitialisation des messages
             st.session_state.messages = [
                 {"role": "assistant", "content": "Bonjour ! Je suis votre assistant virtuel pour l'accessibilité. Comment puis-je vous aider aujourd'hui ?"}
             ]
             if "saved_conversation" in st.session_state:
                 del st.session_state.saved_conversation
             st.rerun()
-
         if st.button("Supprimer toutes les conversations"):
             st.session_state.conversation_history = []
             save_conversations(st.session_state.conversation_history)
             st.rerun()
-        
         st.divider()
-        
-        # Informations sur l'application
-        st.markdown("""
-        ### À propos
-        Ce chatbot utilise:
-        - Gemini 2.0 Flash pour la génération des réponses
-        - Sentence Transformers pour l'analyse sémantique
-        - Les données AccesLibre pour les établissements
-        """)
-
-    # Initialisation du chatbot si les paramètres sont fournis
-    if st.session_state.get("gemini_api_key") and st.session_state.get("api_base_url"):
+    
+    # --- Initialisation du chatbot et gestion de la conversation ---
+    if st.session_state.get("api_key") and st.session_state.get("api_base_url"):
         try:
-            chatbot = initialize_chatbot(st.session_state["api_base_url"], st.session_state["gemini_api_key"])
+            chatbot = initialize_chatbot(st.session_state["api_base_url"], st.session_state["api_key"])
             st.success("✅ Chatbot initialisé avec succès!")
-            
-            # Initialisation de l'historique de conversation s'il n'existe pas déjà
             if "messages" not in st.session_state:
                 st.session_state.messages = [
                     {"role": "assistant", "content": "Bonjour ! Je suis votre assistant virtuel pour l'accessibilité. Comment puis-je vous aider aujourd'hui ?"}
                 ]
-            
-            # Affichage de l'historique des messages
             for message in st.session_state.messages:
                 with st.chat_message(message["role"]):
                     st.markdown(message["content"])
@@ -351,7 +444,6 @@ def main():
                 del st.session_state.selected_question
                 process_question(question)
             
-            # Bouton pour sauvegarder la conversation actuelle
             if len(st.session_state.messages) > 1 and "saved_conversation" not in st.session_state:
                 if st.button("💾 Sauvegarder cette conversation"):
                     st.session_state.conversation_history.append({
@@ -366,7 +458,7 @@ def main():
             
             with st.expander("📝 Exemples de questions"):
                 st.write("Cliquez sur une question pour la poser automatiquement:")
-                st.markdown("""**Recherche d'établissements:**""")
+                st.markdown("**Recherche d'établissements:**")
                 if st.button("Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"):
                     st.session_state.selected_question = "Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"
                     st.rerun()
@@ -376,7 +468,7 @@ def main():
                 if st.button("Je cherche une piscine avec stationnement PMR à Bordeaux"):
                     st.session_state.selected_question = "Je cherche une piscine avec stationnement PMR à Bordeaux"
                     st.rerun()
-                st.markdown("""**Questions générales:**""")
+                st.markdown("**Questions générales:**")
                 if st.button("Quelles sont les aides financières pour les personnes handicapées ?"):
                     st.session_state.selected_question = "Quelles sont les aides financières pour les personnes handicapées ?"
                     st.rerun()
@@ -386,38 +478,29 @@ def main():
                 if st.button("Quels sont mes droits en tant que personne malvoyante ?"):
                     st.session_state.selected_question = "Quels sont mes droits en tant que personne malvoyante ?"
                     st.rerun()
-                st.markdown("""**Outils disponibles:**""")
-                st.markdown("""Recherche google maps:""")
+                st.markdown("**Outils disponibles:**")
+                st.markdown("Recherche google maps:")
                 if st.button("Je cherche un restaurant accessible PMR à Lille, donne moi le liens google maps pour savoir ou il se situe."):
                     st.session_state.selected_question = "Je cherche un restaurant accessible PMR à Lille, génére moi une carte maps pour savoir ou il se situe."
                     st.rerun()
-
                     
         except Exception as e:
             st.error(f"Erreur lors de l'initialisation du chatbot: {str(e)}")
             st.info("Vérifiez que l'URL de l'API est correct et que votre clé API est valide.")
     else:
         st.warning("⚠️ Veuillez entrer votre clé API Gemini et l'URL de l'API pour initialiser le chatbot.")
-        
-        # Affichage d'une démo visuelle en attendant
         st.image("https://via.placeholder.com/800x400?text=Chatbot+Inclusif+Demo", caption="Aperçu du chatbot")
-        
-        # Exemples de cas d'utilisation
         st.subheader("🚀 Ce que vous pourrez faire avec ce chatbot:")
-        
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown("### 🔍 Recherche")
             st.markdown("Trouvez des établissements accessibles selon vos besoins spécifiques")
-        
         with col2:
             st.markdown("### 💡 Information")
             st.markdown("Obtenez des réponses sur le handicap, les droits et les aides")
-        
         with col3:
             st.markdown("### 🗺️ Localisation")
             st.markdown("Découvrez les lieux accessibles près de chez vous")
 
-# Point d'entrée de l'application
 if __name__ == "__main__":
     main()

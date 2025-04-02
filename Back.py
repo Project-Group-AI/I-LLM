@@ -11,7 +11,7 @@ import requests
 from urllib.parse import quote
 
 class ChatbotInclusifGemini:
-    def __init__(self, api_base_url, gemini_api_key):
+    def __init__(self, api_base_url, api_key):
         """
         Initialise le chatbot inclusif avec l'API des établissements publics
         et l'API Gemini 2.0 Flash.
@@ -24,7 +24,7 @@ class ChatbotInclusifGemini:
         self.model = SentenceTransformer('paraphrase-multilingual-mpnet-base-v2')
         
         # Configuration de Gemini
-        genai.configure(api_key=gemini_api_key)
+        genai.configure(api_key=api_key)
         
         # Modèle Gemini pour la génération de documents hypothétiques
         generation_config = {
@@ -660,9 +660,9 @@ class ChatbotInclusifGemini:
 # Exemple d'utilisation
 if __name__ == "__main__":
     api_base_url = "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/"
-    gemini_api_key = "AIzaSyByRnKQaxaTLzcI2AVn4WBFrkvPNhVrcFY"  # Remplacez par votre clé API
+    api_key = ""  # Remplacez par votre clé API
     
-    chatbot = ChatbotInclusifGemini(api_base_url, gemini_api_key)
+    chatbot = ChatbotInclusifGemini(api_base_url, api_key)
     
     
     print("Chatbot Inclusif avec Gemini et API initialisé. Posez votre question (ou tapez 'quit' pour quitter):")
