@@ -188,6 +188,57 @@ class ChatbotInclusifGemini:
             # Par défaut, on suppose que c'est une recherche d'établissement
             return "establishment_search"
         
+    def rank_establishments_by_embedding(self, establishments, query, top_n=5):
+        """
+        Classe les établissements en fonction de la similarité sémantique avec la requête utilisateur.
+
+        Args:
+            establishments (list): Liste des établissements retournés par l'API.
+            query (str): Requête utilisateur originale.
+            top_n (int): Nombre maximal d'établissements à retourner.
+
+        Returns:
+            list: Établissements classés par ordre de similarité sémantique.
+        """
+        if not establishments:
+            return []
+
+        # Embedding requête utilisateur
+        query_embedding = self.model.encode(query, convert_to_tensor=True)
+
+        # Embedding enrichi des établissements
+        establishment_texts = []
+        for e in establishments:
+            text_parts = [
+                e.get('name', ''),
+                e.get('activite', ''),
+                e.get('commentaire', ''),
+                e.get('categorie', ''),
+                e.get('adresse', ''),
+                e.get('voie', ''),
+                e.get('commune', '')
+            ]
+            establishment_text = ' '.join([str(part) for part in text_parts if part])
+            establishment_texts.append(establishment_text)
+
+        establishment_embeddings = self.model.encode(establishment_texts, convert_to_tensor=True)
+
+        # Calcul similarité cosinus
+        similarities = cosine_similarity(
+            query_embedding.cpu().reshape(1, -1),
+            establishment_embeddings.cpu()
+        )[0]
+
+        # Trier selon similarité cosinus
+        sorted_indices = np.argsort(similarities)[::-1]
+
+        # Sélectionner les meilleurs résultats selon embeddings
+        ranked_establishments = [establishments[i] for i in sorted_indices[:top_n]]
+
+        return ranked_establishments
+
+
+        
     def generate_hypothetical_document_with_gemini(self, query):
         """
         Génère un document hypothétique basé sur la requête de l'utilisateur en utilisant Gemini.
@@ -241,7 +292,13 @@ class ChatbotInclusifGemini:
             json_text = json_text.strip()
             
             # Conversion en dictionnaire
+            # Conversion en dictionnaire
             criteria = json.loads(json_text)
+
+            # Correction explicite de la commune
+            if 'commune' in criteria and criteria['commune']:
+                criteria['commune'] = criteria['commune'].strip().capitalize()
+
             
             # Création du document texte
             doc_text = ""
@@ -254,61 +311,75 @@ class ChatbotInclusifGemini:
             print(f"Erreur lors de l'appel à Gemini: {e}")
             return "", {}
         
-    def search_establishments(self, criteria, top_n=5):
+    def search_all_establishments(self, criteria, max_pages=10):
         """
-        Recherche les établissements correspondant aux critères extraits via l'API.
-        
+        Recherche TOUS les établissements correspondant aux critères extraits via l'API en gérant la pagination.
+
         Args:
-            criteria (dict): Critères de recherche
-            top_n (int): Nombre maximum de résultats à retourner
-            
+            criteria (dict): Critères de recherche.
+            max_pages (int): Nombre maximal de pages à parcourir (pour éviter surcharge).
+
         Returns:
-            list: Liste des établissements correspondants
+            list: Liste complète des établissements correspondants.
         """
-        # Construire l'URL de requête à l'API
-        query_params = []
-        
-        # Paramètres spéciaux pour commune et activité (recherche exacte)
-        if 'commune' in criteria:
-            query_params.append(f"commune__exact={quote(criteria['commune'])}")
-        
-        if 'activite' in criteria:
-            query_params.append(f"activite__contains={quote(criteria['activite'])}")
-        
-        # Autres filtres d'accessibilité (correspondance exacte pour les booléens)
+        all_establishments = []
+        page = 1
+        page_size = 100  # Maximum raisonnable par requête (à ajuster selon les limites réelles de l'API)
+
+        query_params_base = []
+
+        # commune et activite seulement si présents explicitement
+        if 'commune' in criteria and criteria['commune']:
+            query_params_base.append(f"commune__exact={quote(criteria['commune'])}")
+
+        if 'activite' in criteria and criteria['activite']:
+            query_params_base.append(f"activite__contains={quote(criteria['activite'])}")
+
         boolean_fields = [
-            'entree_pmr', 'stationnement_pmr', 'stationnement_presence', 
-            'sanitaires_presence', 'sanitaires_adaptes', 
+            'entree_pmr', 'stationnement_pmr', 'stationnement_presence',
+            'sanitaires_presence', 'sanitaires_adaptes',
             'accueil_equipements_malentendants_presence', 'accueil_audiodescription_presence',
             'cheminement_ext_bande_guidage', 'cheminement_ext_plain_pied',
             'transport_station_presence'
         ]
-        
+
         for field in boolean_fields:
-            if field in criteria and criteria[field] is True:
-                query_params.append(f"{field}__exact=true")
-        
-        # Limite du nombre de résultats
-        query_params.append(f"page_size={top_n}")
-        
-        # Construction de l'URL complète
-        api_url = f"{self.api_base_url}?{'&'.join(query_params)}"
-        print(f"URL de recherche API: {api_url}")
-        
-        try:
-            # Requête à l'API
-            response = requests.get(api_url)
-            response.raise_for_status()
-            
-            # Conversion des résultats
-            establishments = response.json()
-            print(f"Nombre d'établissements trouvés: {len(establishments)}")
-            
-            return establishments
-            
-        except Exception as e:
-            print(f"Erreur lors de la recherche via l'API: {e}")
-            return []
+            if criteria.get(field) is True:
+                query_params_base.append(f"{field}__exact=true")
+
+        while page <= max_pages:
+            query_params = query_params_base.copy()
+            query_params.append(f"page={page}")
+            query_params.append(f"page_size={page_size}")
+
+            api_url = f"{self.api_base_url}?{'&'.join(query_params)}"
+            print(f"Appel API page {page} : {api_url}")
+
+            try:
+                response = requests.get(api_url)
+                response.raise_for_status()
+
+                establishments = response.json().get('data', [])
+
+                if not establishments:
+                    break  # Si plus aucun résultat, arrête-toi
+
+                all_establishments.extend(establishments)
+
+                if len(establishments) < page_size:
+                    break  # Dernière page atteinte
+
+                page += 1
+
+            except Exception as e:
+                print(f"Erreur lors de la recherche API (page {page}): {e}")
+                break
+
+        print(f"Nombre total d'établissements trouvés : {len(all_establishments)}")
+        return all_establishments
+
+
+
     
     def generate_natural_response(self, establishments, query, criteria):
         """
@@ -575,17 +646,21 @@ class ChatbotInclusifGemini:
                 return "Pourriez-vous préciser dans quelle commune ou ville vous souhaitez effectuer votre recherche ?"
             
             # Recherche des établissements via l'API
-            establishments = self.search_establishments(criteria)
+            establishments = self.search_all_establishments(criteria)
             
+
+            ranked_establishments = self.rank_establishments_by_embedding(establishments, query, top_n=5)
             # Générer une réponse naturelle avec le LLM
-            response = self.generate_natural_response(establishments, query, criteria)
+            # Générer une réponse naturelle avec les établissements classés
+            response = self.generate_natural_response(ranked_establishments, query, criteria)
+
             
             return response
 
 # Exemple d'utilisation
 if __name__ == "__main__":
     api_base_url = "https://tabular-api.data.gouv.fr/api/resources/93ae96a7-1db7-4cb4-a9f1-6d778370b640/data/"
-    gemini_api_key = ""  # Remplacez par votre clé API
+    gemini_api_key = "AIzaSyByRnKQaxaTLzcI2AVn4WBFrkvPNhVrcFY"  # Remplacez par votre clé API
     
     chatbot = ChatbotInclusifGemini(api_base_url, gemini_api_key)
     
