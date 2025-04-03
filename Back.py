@@ -9,6 +9,8 @@ from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import json
 import requests
 from urllib.parse import quote
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
 
 class ChatbotInclusifGemini:
     def __init__(self, api_base_url, gemini_api_key):
@@ -75,6 +77,13 @@ class ChatbotInclusifGemini:
             generation_config=knowledge_generation_config,
             safety_settings=safety_settings
         )
+
+        self.tinybert_model_name = "huawei-noah/TinyBERT_General_4L_312D"
+        self.tinybert_tokenizer = AutoTokenizer.from_pretrained(self.tinybert_model_name)
+        self.tinybert_model = AutoModelForSequenceClassification.from_pretrained(self.tinybert_model_name, num_labels=3)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.tinybert_model.to(device)
+        self.tinybert_device = device
         
         # Vérification de l'API
         self.check_api_connection()
@@ -605,6 +614,26 @@ class ChatbotInclusifGemini:
         except Exception as e:
             print(f"Erreur lors de la génération de la réponse sur les connaissances: {e}")
             return "Je suis désolé, mais je ne peux pas répondre à cette question pour le moment. Veuillez contacter directement la MDPH de votre département pour obtenir des informations précises sur les aides et services disponibles."
+        
+    def early_classify(self, query):
+        """
+        Classifie rapidement une requête avec un modèle TinyBERT.
+        
+        Args:
+            query (str): La requête de l'utilisateur
+            
+        Returns:
+            tuple: (pred_label, confidence) - Prédiction et score de confiance
+        """
+        inputs = self.tinybert_tokenizer(query, return_tensors="pt", truncation=True, padding=True, max_length=128)
+        inputs = {k: v.to(self.tinybert_device) for k, v in inputs.items()}
+        with torch.no_grad():
+            outputs = self.tinybert_model(**inputs)
+        logits = outputs.logits
+        probabilities = torch.softmax(logits, dim=-1)
+        pred_label = torch.argmax(probabilities, dim=-1).item()
+        confidence = probabilities.max().item()
+        return pred_label, confidence
     
     def process_query(self, query):
         """
@@ -616,6 +645,20 @@ class ChatbotInclusifGemini:
         Returns:
             str: Réponse du chatbot
         """
+
+        # Early classification avec TinyBERT
+        early_threshold = 0.8
+        early_pred, early_confidence = self.early_classify(query)
+        print(f"Early classification : label={early_pred}, confiance={early_confidence:.2f}")
+        if early_confidence >= early_threshold:
+            # Définissez ici les réponses préliminaires en fonction du label prédit
+            responses = {
+                0: "Réponse rapide : votre requête semble être de type A.",
+                1: "Réponse rapide : votre requête semble être de type B.",
+                2: "Réponse rapide : votre requête semble être de type C."
+            }
+            return responses.get(early_pred, "Type de requête non reconnu.")
+        
         # Classification de la requête
         query_type = self.classify_query_type(query)
         print(f"Type de requête détecté: {query_type}")
