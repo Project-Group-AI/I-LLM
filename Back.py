@@ -12,6 +12,7 @@ import json
 import requests
 from urllib.parse import quote
 import math # Added for distance calculation
+from transformers import CamembertTokenizer, pipeline
 
 class ChatbotInclusifGemini:
     def __init__(self, api_base_url, gemini_api_key):
@@ -45,6 +46,22 @@ class ChatbotInclusifGemini:
 
         self.check_api_connection()
         self.initialize_knowledge_base()
+
+        try:
+            # Charger le tokenizer slow à partir du modèle hébergé sur Hugging Face
+            slow_tokenizer = CamembertTokenizer.from_pretrained("gabincharlemagne/finetuned-distilcamembert", use_fast=False)
+            
+            self.early_classifier = pipeline(
+                "text-classification",
+                model="gabincharlemagne/finetuned-distilcamembert",
+                tokenizer=slow_tokenizer,
+                framework="pt",
+                use_fast=False  # Désactivation des tokenizers fast pour éviter les problèmes liés à SentencePiece
+            )
+            print("Early classifier (gabincharlemagne/finetuned-distilcamembert) initialisé avec succès.")
+        except Exception as e:
+            print("Échec de l'initialisation du early classifier :", e)
+            self.early_classifier = None
 
     # --- (check_api_connection unchanged) ---
     def check_api_connection(self):
@@ -170,6 +187,29 @@ class ChatbotInclusifGemini:
         except Exception as e:
             print(f"Erreur lors de la classification de la requête: {e}")
             return "off_topic" # Safer default if classification fails
+        
+
+    def early_classification(self, query):
+        """
+        Effectue une classification rapide de la requête utilisateur en utilisant un modèle léger (DistilCamembert).
+        Renvoie une chaîne parmi 'establishment_search', 'general_info' ou 'off_topic'.
+        """
+        if self.early_classifier is None:
+            print("Early classifier non disponible, utilisation du modèle Gemini pour la classification.")
+            return self.classify_query_type(query)  # Fallback
+        
+        # Exécute la classification sur la requête
+        result = self.early_classifier(query)
+        print("Early classifier output:", result)
+        
+        # Adaptation du mapping en fonction du label retourné
+        label = result[0]['label']
+        if label.lower() == "establishment_search":  # si le modèle retourne exactement "establishment_search"
+            return "establishment_search"
+        elif label.lower() == "general_info":        # si le modèle retourne exactement "general_info"
+            return "general_info"
+        else:
+            return "off_topic"
 
     # --- (rank_establishments_by_embedding unchanged) ---
     def rank_establishments_by_embedding(self, establishments, query, top_n=5):
@@ -852,8 +892,10 @@ class ChatbotInclusifGemini:
         (y compris le parking PMR pour les communes de Seine Ouest) et renvoie une réponse.
         """
         # 1. Classification
-        query_type = self.classify_query_type(query)
-        print(f"Type de requête détecté: {query_type}")
+
+        # Utiliser le modèle finetuné pour classifier la requête
+        query_type = self.early_classification(query)
+        print(f"Query type from fine-tuned model: {query_type}")
 
         # 2. Traitement par type
         if query_type == "off_topic":
