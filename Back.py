@@ -13,6 +13,10 @@ import requests
 from urllib.parse import quote
 import math # Added for distance calculation
 from transformers import CamembertTokenizer, pipeline
+import time
+import torch
+from ptflops import get_model_complexity_info
+
 
 class ChatbotInclusifGemini:
     def __init__(self, api_base_url, gemini_api_key):
@@ -893,9 +897,23 @@ class ChatbotInclusifGemini:
         """
         # 1. Classification
 
+        # --- Comparatif de temps d'inférence ---
+        start_early = time.time()
+        early_type = self.early_classification(query)
+        end_early = time.time()
+        early_time = end_early - start_early
+
+        start_gemini = time.time()
+        gemini_type = self.classify_query_type(query)
+        end_gemini = time.time()
+        gemini_time = end_gemini - start_gemini
+
+        print(f"Comparatif d'inférence pour la requête: \"{query}\"")
+        print(f"- Early classifier (finetuné): type = {early_type}, temps = {early_time:.3f} sec")
+        print(f"- Gemini classifier:            type = {gemini_type}, temps = {gemini_time:.3f} sec")
+
         # Utiliser le modèle finetuné pour classifier la requête
-        query_type = self.early_classification(query)
-        print(f"Query type from fine-tuned model: {query_type}")
+        query_type = early_type
 
         # 2. Traitement par type
         if query_type == "off_topic":
