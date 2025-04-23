@@ -894,25 +894,15 @@ class ChatbotInclusifGemini:
         Traite la requête de l'utilisateur, effectue les recherches nécessaires
         (y compris le parking PMR pour les communes de Seine Ouest) et renvoie une réponse.
         """
-        # 1. Classification
-
-        # --- Comparatif de temps d'inférence ---
-        start_early = time.time()
-        early_type = self.early_classification(query)
-        end_early = time.time()
-        early_time = end_early - start_early
-
-        start_gemini = time.time()
-        gemini_type = self.classify_query_type(query)
-        end_gemini = time.time()
-        gemini_time = end_gemini - start_gemini
-
-        print(f"Comparatif d'inférence pour la requête: \"{query}\"")
-        print(f"- Early classifier (finetuné): type = {early_type}, temps = {early_time:.3f} sec")
-        print(f"- Gemini classifier:            type = {gemini_type}, temps = {gemini_time:.3f} sec")
-
-        # Utiliser le modèle finetuné pour classifier la requête
-        query_type = early_type
+        # 1. Classification - Utiliser uniquement le modèle finetuné distilCamembert
+        try:
+            query_type = self.early_classification(query)
+            print(f"Classification de la requête par distilCamembert: {query_type}")
+        except Exception as e:
+            print(f"Erreur avec le classifieur distilCamembert: {e}")
+            # Fallback vers Gemini en cas d'erreur
+            query_type = self.classify_query_type(query)
+            print(f"Fallback vers classifieur Gemini: {query_type}")
 
         # 2. Traitement par type
         if query_type == "off_topic":
