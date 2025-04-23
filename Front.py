@@ -583,8 +583,8 @@ def main():
                 if st.button("Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"):
                     st.session_state.selected_question = "Où puis-je trouver un restaurant accessible en fauteuil roulant à Paris ?"
                     st.rerun()
-                if st.button("Y a-t-il un musée avec audiodescription à Lyon ?"):
-                    st.session_state.selected_question = "Y a-t-il un musée avec audiodescription à Lyon ?"
+                if st.button("Y a-t-il un bar pour personne malvoyante à Lyon ?"):
+                    st.session_state.selected_question = "Y a-t-il un bar pour personne malvoyante à Lyon ?"
                     st.rerun()
                 if st.button("Je cherche une piscine avec stationnement PMR à Bordeaux"):
                     st.session_state.selected_question = "Je cherche une piscine avec stationnement PMR à Bordeaux"
