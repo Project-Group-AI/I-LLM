@@ -15,7 +15,6 @@ import math # Added for distance calculation
 from transformers import CamembertTokenizer, pipeline
 import time
 import torch
-from ptflops import get_model_complexity_info
 
 
 class ChatbotInclusifGemini:
