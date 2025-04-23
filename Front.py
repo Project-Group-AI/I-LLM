@@ -381,7 +381,7 @@ def main():
         
         with col1:
             # Champ pour la clé API (masqué)
-             gemini_api_key = st.text_input("Clé API Gemini", type="password", value=st.session_state.get("gemini_api_key", ""), 
+             gemini_api_key = st.text_input("Clé API Gemini", type="password", value=st.session_state.get("gemini_api_key", "AIzaSyDl3AzHPqefJLbYgDc_MywAbGtdEpqr4gE"), 
                                   help="Entrez votre clé API Gemini pour activer le chatbot")
         
         with col2:
@@ -611,9 +611,6 @@ def main():
             st.info("Vérifiez que l'URL de l'API est correct et que votre clé API est valide.")
     else:
         st.warning("⚠️ Veuillez entrer votre clé API Gemini et l'URL de l'API pour initialiser le chatbot.")
-        
-        # Affichage d'une démo visuelle en attendant
-        st.image("https://via.placeholder.com/800x400?text=Chatbot+Inclusif+Demo", caption="Aperçu du chatbot")
         
         # Exemples de cas d'utilisation
         st.subheader("🚀 Ce que vous pourrez faire avec ce chatbot:")
