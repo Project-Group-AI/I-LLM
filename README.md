@@ -334,3 +334,36 @@ def process_query(self, query):
         else: # off_topic or error
             # ... return appropriate message ...
 ```
+
+---
+
+## Maintenance et Évolution du Projet
+
+Pour assurer la pérennité et l'amélioration continue de ce chatbot, voici quelques points clés à considérer :
+
+1.  **Gestion des Dépendances :**
+    *   Vérifiez régulièrement les mises à jour des bibliothèques Python (`streamlit`, `google-generativeai`, `sentence-transformers`, `transformers`, `requests`, etc.) via `pip list --outdated`.
+    *   Mettez à jour les dépendances (`pip install -U <package>`) avec précaution, en testant l'application après chaque mise à jour majeure pour détecter d'éventuelles incompatibilités.
+
+2.  **Suivi des API Externes :**
+    *   **API Établissements (AccesLibre via data.gouv) :** Surveillez la disponibilité et d'éventuels changements dans la structure des données retournées par l'URL configurée dans `front.py` et utilisée dans `back.py` (`search_all_establishments`). La fonction `check_api_connection` peut aider au diagnostic initial.
+    *   **API Parking PMR (Seine Ouest) :** Vérifiez périodiquement que l'API (`pmr_parking_api_url` dans `back.py`) est toujours active et que le format des réponses n'a pas changé, ce qui impacterait la fonction `search_pmr_parking`.
+    *   **API Gemini :** Tenez-vous informé des éventuelles évolutions des modèles Gemini (ex: nouvelles versions de `gemini-1.5-flash`) et des changements dans l'API `google-generativeai`. Mettez à jour les noms des modèles ou les configurations (`generation_config`, `safety_settings`) dans `back.py` si nécessaire.
+
+3.  **Gestion des Modèles :**
+    *   **Sentence Transformer (`paraphrase-multilingual-mpnet-base-v2`) :** Vérifiez s'il existe des modèles multilingues plus performants ou mieux adaptés au contexte français pour l'encodage sémantique (`rank_establishments_by_embedding`).
+    *   **Classificateur Local (`gabincharlemagne/finetuned-distilcamembert`) :** Évaluez périodiquement sa performance (`early_classification`). Si la précision diminue ou si les types de requêtes évoluent, envisagez un réentraînement ou l'utilisation d'un autre modèle de classification léger.
+    *   **Modèles Gemini :** Expérimentez avec différents prompts dans les fonctions `classify_query_type`, `generate_hypothetical_document_with_gemini`, `generate_natural_response`, et `generate_knowledge_response` pour améliorer la précision, la pertinence et le naturel des réponses.
+
+4.  **Base de Connaissances et Données :**
+    *   **`knowledge_base` (dans `back.py`) :** Mettez à jour les informations (aides, organismes, droits) si la législation ou les dispositifs évoluent en France.
+    *   **`conversations.json` :** Surveillez la taille de ce fichier. Si elle devient trop importante, envisagez des stratégies d'archivage ou de stockage plus robustes (ex: base de données). Assurez-vous que le formatage reste correct.
+
+5.  **Qualité du Code et Interface :**
+    *   **Refactoring :** Simplifiez les fonctions complexes dans `front.py` et `back.py` pour améliorer la lisibilité et la maintenabilité.
+    *   **Tests :** Envisagez d'ajouter des tests unitaires ou d'intégration pour les fonctions critiques (ex: parsing d'API, logique de classification, formatage des réponses) afin de prévenir les régressions.
+    *   **Interface (`front.py`) :** Améliorez l'ergonomie et l'accessibilité de l'interface Streamlit. Testez les thèmes d'accessibilité et les options de police/taille pour garantir une bonne expérience utilisateur.
+
+6.  **Sécurité :**
+    *   **Clé API Gemini :** Gérez la clé API de manière sécurisée. Évitez de la stocker directement dans le code source. Utilisez des variables d'environnement ou un système de gestion des secrets, surtout si le projet est déployé.
+    *   
