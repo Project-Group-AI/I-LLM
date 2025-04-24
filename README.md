@@ -366,4 +366,3 @@ Pour assurer la pérennité et l'amélioration continue de ce chatbot, voici que
 
 6.  **Sécurité :**
     *   **Clé API Gemini :** Gérez la clé API de manière sécurisée. Évitez de la stocker directement dans le code source. Utilisez des variables d'environnement ou un système de gestion des secrets, surtout si le projet est déployé.
-    *   
